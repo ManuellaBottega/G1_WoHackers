@@ -205,8 +205,8 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     p2 = cur.fetchone()
     
     if not p2:
-        boas_p1, ruins_p1 = classificar_acoes(id_p1)
         con.close()
+        boas_p1, ruins_p1 = classificar_acoes(id_p1)
         if boas_p1: return random.choice(boas_p1)
         return None
 
@@ -224,8 +224,9 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     ''', (id_p1, id_p2))
     alvo_ciume = cur.fetchone()
     
-    boas_p1, ruins_p1 = classificar_acoes(id_p1)
     con.close()
+    
+    boas_p1, ruins_p1 = classificar_acoes(id_p1)
 
     if alvo_ciume:
         ruins_p1.append(f"Essa {nome_p2} é uma grande de uma talarica!")
