@@ -8,18 +8,9 @@ ESPECIES_DISPONIVEIS = {
 }
 
 AFINIDADE_INICIAL_ESPECIES = {
-    "Cacto": {
-        "Samambaia": 5,
-        "Jiboia": 40
-    },
-    "Samambaia": {
-        "Cacto": 10,
-        "Jiboia": 25
-    },
-    "Jiboia": {
-        "Cacto": 35,
-        "Samambaia": 20
-    }
+    "Cacto": {"Samambaia": 5, "Jiboia": 40},
+    "Samambaia": {"Cacto": 10, "Jiboia": 25},
+    "Jiboia": {"Cacto": 35, "Samambaia": 20}
 }
 
 pedidos_usados = set()
@@ -76,6 +67,9 @@ def classificar_acoes(id_planta):
     outra_planta = cur.fetchone()
     con.close()
 
+    if not planta:
+        return [], []
+
     nome, especie, dias_sem_rega, local_atual = planta
     necessidades = ESPECIES_DISPONIVEIS[especie]
     
@@ -84,7 +78,8 @@ def classificar_acoes(id_planta):
     acoes_boas = []
     acoes_ruins = []
 
-    if dias_sem_rega < necessidades["rega_dias"]:
+    # Corrigido: Reclama de sede se os dias sem rega atingiram ou passaram do limite
+    if dias_sem_rega >= necessidades["rega_dias"]:
         acoes_ruins.append(f"Tô morrendo de sede, me rega logo! ({nome})")
         acoes_ruins.append(f"Acho que esqueceram de mim, quero água. ({nome})")
     else:
@@ -92,13 +87,11 @@ def classificar_acoes(id_planta):
 
     if local_atual == necessidades["sol_ideal"]:
         acoes_ruins.append(f"Me tire daqui, quero ir para outro lugar! ({nome})")
-        
         lugares_possiveis = [esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]
         lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
         acoes_ruins.append(f"Me coloque na {random.choice(lugares_ruins)}. ({nome})")
     else:
         acoes_boas.append(f"Me coloque na {necessidades['sol_ideal']}. ({nome})")
-        
         lugares_possiveis = [esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]
         lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
         acoes_ruins.append(f"Me mude para a {random.choice(lugares_ruins)}. ({nome})")
@@ -123,9 +116,11 @@ def classificar_acoes(id_planta):
     return acoes_boas, acoes_ruins
 
 def pegar_acao_unica(lista_acoes):
+    if not lista_acoes:
+        return ""
     random.shuffle(lista_acoes)
     for acao in lista_acoes:
-        texto_base = acao.split('(')[0].strip()
+        texto_base = acao.split('(')[0].strip() if '(' in acao else acao.strip()
         if texto_base not in pedidos_usados:
             pedidos_usados.add(texto_base)
             return acao
@@ -136,13 +131,18 @@ def gerar_pedido_turno(id_p1):
     cur = con.cursor()
     
     cur.execute("SELECT nome_customizado FROM Plantas WHERE id = ?", (id_p1,))
-    nome_p1 = cur.fetchone()[0]
+    res_p1 = cur.fetchone()
+    if not res_p1:
+        con.close()
+        return None
+    nome_p1 = res_p1[0]
     
     cur.execute("SELECT id, nome_customizado FROM Plantas WHERE id != ? ORDER BY RANDOM() LIMIT 1", (id_p1,))
     p2 = cur.fetchone()
     
     if not p2:
         boas_p1, ruins_p1 = classificar_acoes(id_p1)
+        con.close()
         if boas_p1: return random.choice(boas_p1)
         return None
 
@@ -153,12 +153,7 @@ def gerar_pedido_turno(id_p1):
     
     cur.execute("SELECT nivel_afinidade FROM Relacionamentos WHERE planta_origem_id = ? AND planta_destino_id = ?", (id_p2, id_p1))
     rela_p2p1 = cur.fetchone()[0]
-    con.close()
 
-    boas_p1, ruins_p1 = classificar_acoes(id_p1)
-    boas_p2, ruins_p2 = classificar_acoes(id_p2)
-
-    cur = conectar().cursor()
     cur.execute('''
         SELECT R1.planta_destino_id 
         FROM Relacionamentos R1
@@ -168,6 +163,10 @@ def gerar_pedido_turno(id_p1):
     ''', (id_p1, id_p2))
     alvo_ciume = cur.fetchone()
     
+    boas_p1, ruins_p1 = classificar_acoes(id_p1)
+    boas_p2, ruins_p2 = classificar_acoes(id_p2)
+    con.close()
+
     if alvo_ciume:
         rela_p1p2 = 10
         rela_p2p1 = 10
@@ -176,27 +175,20 @@ def gerar_pedido_turno(id_p1):
 
     if rela_p1p2 < 20 and rela_p2p1 > 30:
         if ruins_p2: return f"{nome_p2}: {pegar_acao_unica(ruins_p2)}"
-        
     elif rela_p2p1 < 20 and rela_p1p2 > 30:
         if ruins_p1: return f"{nome_p1}: {pegar_acao_unica(ruins_p1)}"
-        
     elif rela_p1p2 < 20:
         if ruins_p2: return f"{nome_p1}: Ei humano, {pegar_acao_unica(ruins_p2).lower()}"
-        
     elif rela_p1p2 > 30:
         if boas_p2: return f"{nome_p1}: Humano, {pegar_acao_unica(boas_p2).lower()}"
-        
     elif rela_p2p1 < 20:
         if ruins_p1: return f"{nome_p2}: Que tal se você {pegar_acao_unica(ruins_p1).lower()}?"
-        
     elif rela_p2p1 > 30:
         if boas_p1: return f"{nome_p2}: Faça um favor e {pegar_acao_unica(boas_p1).lower()}"
-        
     else:
         if boas_p1: 
             return f"{nome_p1}: {pegar_acao_unica(boas_p1)}"
-        else:
-            return None
+    return None
 
 def finalizar_dia_e_iniciar_turno():
     global pedidos_usados

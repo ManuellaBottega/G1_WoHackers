@@ -4,7 +4,6 @@ import regras
 
 app = Flask(__name__)
 
-# Garante que o banco e as tabelas sejam criados ao iniciar o servidor
 banco.criar_tabelas()
 
 @app.route('/')
@@ -18,23 +17,24 @@ def cadastrar_planta():
     dados = request.get_json()
     nome = dados.get('nome')
     especie = dados.get('especie')
-    vaso = dados.get('vaso', 'Padrão')
 
     if not nome or not especie:
         return jsonify({"erro": "Nome e espécie são obrigatórios"}), 400
 
     try:
-        novo_id = regras.cadastrar_nova_planta(nome, especie, vaso)
+        # Removido o parâmetro 'vaso' que causava erro de assinatura
+        novo_id = regras.cadastrar_nova_planta(nome, especie)
         return jsonify({"sucesso": True, "mensagem": f"{nome} entrou no chat!", "id": novo_id}), 201
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
 @app.route('/api/plantas', methods=['GET'])
 def listar_plantas():
-    """Retorna a lista de plantas vivas para o front-end montar a tela."""
+    """Retorna a lista de plantas para o front-end montar a tela."""
     con = banco.conectar_banco()
     cur = con.cursor()
-    cur.execute("SELECT id, nome_customizado, nome_cientifico, saude FROM Plantas WHERE morta = 0")
+    # Ajustado para selecionar apenas as colunas que realmente existem no banco
+    cur.execute("SELECT id, nome_customizado, especie FROM Plantas")
     plantas = cur.fetchall()
     con.close()
 
@@ -43,8 +43,7 @@ def listar_plantas():
         lista_plantas.append({
             "id": p[0],
             "nome": p[1],
-            "especie": p[2],
-            "saude": p[3]
+            "especie": p[2]
         })
         
     return jsonify(lista_plantas)
@@ -54,12 +53,12 @@ def rodar_turno():
     """Gera os pedidos do dia para atualizar o chat."""
     con = banco.conectar_banco()
     cur = con.cursor()
-    cur.execute("SELECT id FROM Plantas WHERE morta = 0")
-    plantas_vivas = cur.fetchall()
+    cur.execute("SELECT id FROM Plantas")
+    plantas_existentes = cur.fetchall()
     con.close()
 
     pedidos = []
-    for p in plantas_vivas:
+    for p in plantas_existentes:
         id_planta = p[0]
         pedido_texto = regras.gerar_pedido_turno(id_planta)
         
