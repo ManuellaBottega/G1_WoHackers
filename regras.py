@@ -13,8 +13,6 @@ AFINIDADE_INICIAL_ESPECIES = {
     "Jiboia": {"Cacto": 35, "Samambaia": 20}
 }
 
-pedidos_usados = set()
-
 def conectar():
     return sqlite3.connect('banco_jardim.db')
 
@@ -115,7 +113,7 @@ def classificar_acoes(id_planta):
 
     return acoes_boas, acoes_ruins
 
-def pegar_acao_unica(lista_acoes):
+def pegar_acao_unica(lista_acoes, pedidos_usados):
     if not lista_acoes:
         return ""
     random.shuffle(lista_acoes)
@@ -126,7 +124,7 @@ def pegar_acao_unica(lista_acoes):
             return acao
     return lista_acoes[0]
 
-def gerar_pedido_turno(id_p1):
+def gerar_pedido_turno(id_p1, pedidos_usados):
     con = conectar()
     cur = con.cursor()
     
@@ -174,25 +172,25 @@ def gerar_pedido_turno(id_p1):
         ruins_p2.append(f"Sua presença me enoja, você nunca vai ter quem você quer. ({nome_p2})")
 
     if rela_p1p2 < 20 and rela_p2p1 > 30:
-        if ruins_p2: return f"{nome_p2}: {pegar_acao_unica(ruins_p2)}"
+        if ruins_p2: return f"{nome_p2}: {pegar_acao_unica(ruins_p2, pedidos_usados)}"
     elif rela_p2p1 < 20 and rela_p1p2 > 30:
-        if ruins_p1: return f"{nome_p1}: {pegar_acao_unica(ruins_p1)}"
+        if ruins_p1: return f"{nome_p1}: {pegar_acao_unica(ruins_p1, pedidos_usados)}"
     elif rela_p1p2 < 20:
-        if ruins_p2: return f"{nome_p1}: Ei humano, {pegar_acao_unica(ruins_p2).lower()}"
+        if ruins_p2: return f"{nome_p1}: Ei humano, {pegar_acao_unica(ruins_p2, pedidos_usados).lower()}"
     elif rela_p1p2 > 30:
-        if boas_p2: return f"{nome_p1}: Humano, {pegar_acao_unica(boas_p2).lower()}"
+        if boas_p2: return f"{nome_p1}: Humano, {pegar_acao_unica(boas_p2, pedidos_usados).lower()}"
     elif rela_p2p1 < 20:
-        if ruins_p1: return f"{nome_p2}: Que tal se você {pegar_acao_unica(ruins_p1).lower()}?"
+        if ruins_p1: return f"{nome_p2}: Que tal se você {pegar_acao_unica(ruins_p1, pedidos_usados).lower()}?"
     elif rela_p2p1 > 30:
-        if boas_p1: return f"{nome_p2}: Faça um favor e {pegar_acao_unica(boas_p1).lower()}"
+        if boas_p1: return f"{nome_p2}: Faça um favor e {pegar_acao_unica(boas_p1, pedidos_usados).lower()}"
     else:
         if boas_p1: 
-            return f"{nome_p1}: {pegar_acao_unica(boas_p1)}"
+            return f"{nome_p1}: {pegar_acao_unica(boas_p1, pedidos_usados)}"
     return None
 
 def finalizar_dia_e_iniciar_turno():
-    global pedidos_usados
-    pedidos_usados.clear()
+    # Cria o controle de pedidos limpo apenas para este turno
+    pedidos_usados = set() 
     
     con = conectar()
     cur = con.cursor()
@@ -205,8 +203,11 @@ def finalizar_dia_e_iniciar_turno():
 
     novas_mensagens = []
     for planta in plantas:
-        mensagem = gerar_pedido_turno(planta[0])
+        mensagem = gerar_pedido_turno(planta[0], pedidos_usados)
         if mensagem:
-            novas_mensagens.append(mensagem)
+            novas_mensagens.append({
+                "id_planta": planta[0],
+                "mensagem": mensagem
+            })
             
     return novas_mensagens
