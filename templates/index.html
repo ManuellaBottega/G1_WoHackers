@@ -421,38 +421,6 @@
         </div>
     </div>
 
-<!--Você encontrou um pedaço do codigo do diario secreto! Tire o comentarios desses lugares para ler as relacões dos membros do jardim:
-
-1. Na parte de baixo do HTML, tem um bloco comentado. Dentro dele, tem o código do modal do diário secreto. Descomente ele para ativar o botão e a janela do diário.
-2. No final do script, tem uma função chamada "abrirDiarioSecreto" e outra chamada "fecharModalDiario". Elas estão comentadas, descomente elas para ativar a funcionalidade de abrir e fechar o diário secreto.
-3. No arquivo app.py, tem um endpoint comentado chamado "/api/diario". Descomente ele para ativar a funcionalidade de buscar os dados do diário secreto.
-4. Após rodar o código, clique no olho que apareceu no canto da tela!-->
-
-<!--
-    <div class="btn-secreto-fofocas" onclick="abrirDiarioSecreto()" title="Diário do Jardim">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-    </div>
-
-    <div class="modal-cadastro" id="modal-diario" onclick="fecharModalDiario(event)">
-        <div class="modal-conteudo" onclick="event.stopPropagation()">
-            <button class="btn-fechar" onclick="fecharModalDiario(event)">&#10005;</button>
-            <h2>O que tá acontecendo</h2>
-            
-            <div class="secao-diario">
-                <h3>Afinidades e Tretas</h3>
-                <ul class="lista-fofocas" id="lista-relacionamentos"></ul>
-            </div>
-
-            <div class="secao-diario">
-                <h3>Últimos Acontecimentos</h3>
-                <ul class="lista-fofocas" id="lista-historico"></ul>
-            </div>
-        </div>
-    </div>
--->
     <div class="modal-cadastro" id="modal-cadastro" onclick="fecharModalCadastro(event)">
         <div class="modal-conteudo" onclick="event.stopPropagation()">
             <button class="btn-fechar" onclick="fecharModalCadastro(event)">&#10005;</button>
@@ -602,58 +570,6 @@ function mostrarPedidoPlanta(idPlanta) {
                 document.getElementById("modal-cadastro").style.display = "none";
             }
         }
-
-//Você encontrou um pedaço do codigo do diario secreto! Tire o comentarios desses lugares para ler as relacões dos membros do jardim:
-
-//1. Na parte de baixo do HTML, tem um bloco comentado que começa com "<!--" e termina com "-->". Dentro dele, tem o código do modal do diário secreto. Descomente ele para ativar o botão e a janela do diário.
-//2. No final do script, tem uma função chamada "abrirDiarioSecreto" e outra chamada "fecharModalDiario". Elas estão comentadas, descomente elas para ativar a funcionalidade de abrir e fechar o diário secreto.
-//3. No arquivo app.py, tem um endpoint comentado chamado "/api/diario". Descomente ele para ativar a funcionalidade de buscar os dados do diário secreto.
-//4. Após rodar o código, clique no olho que apareceu no canto da tela!
-
-/* 
-        async function abrirDiarioSecreto() {
-            document.getElementById("modal-diario").style.display = "flex";
-            const ulRelacionamentos = document.getElementById("lista-relacionamentos");
-            const ulHistorico = document.getElementById("lista-historico");
-            
-            ulRelacionamentos.innerHTML = "<li>Carregando fofocas...</li>";
-            ulHistorico.innerHTML = "<li>Puxando na memória...</li>";
-
-            try {
-                const response = await fetch(`${API_BASE}/api/diario`);
-                const dados = await response.json();
-
-                ulRelacionamentos.innerHTML = "";
-                if(dados.relacionamentos.length === 0) {
-                    ulRelacionamentos.innerHTML = "<li>As plantas estão sendo muito educadas... por enquanto. Nenhuma treta forte ou grande amor.</li>";
-                } else {
-                    dados.relacionamentos.forEach(r => {
-                        const texto = r.status === 'ama' 
-                            ? `<span class="tag-ama">💖 Ama (${r.nivel}/50)</span> a planta ${r.planta_destino}`
-                            : `<span class="tag-odeia">😠 Odeia (${r.nivel}/50)</span> a planta ${r.planta_destino}`;
-                        ulRelacionamentos.innerHTML += `<li><strong>${r.planta_origem}</strong> ${texto}</li>`;
-                    });
-                }
-
-                ulHistorico.innerHTML = "";
-                if(dados.historico.length === 0) {
-                    ulHistorico.innerHTML = "<li>Nada aconteceu ainda no jardim.</li>";
-                } else {
-                    dados.historico.forEach(h => {
-                        ulHistorico.innerHTML += `<li><span class="tag-dia">Dia ${h.dia}</span> <strong>${h.nome}</strong>: ${h.acao}</li>`;
-                    });
-                }
-            } catch(e) {
-                ulRelacionamentos.innerHTML = "<li>Erro ao buscar as fofocas :(</li>";
-            }
-        }
-
-        function fecharModalDiario(e) {
-            if (e.target.id === 'modal-diario' || e.target.classList.contains('btn-fechar')) {
-                document.getElementById("modal-diario").style.display = "none";
-            }
-        }
-*/
 
         function previewImagem(event) {
             const input = event.target;

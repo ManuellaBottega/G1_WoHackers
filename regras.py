@@ -106,6 +106,37 @@ def cadastrar_nova_planta(nome_customizado, especie, nome_arquivo_foto='default_
     conexao.close()
     return nova_planta_id
 
+def gerar_frases_planta(planta, outra_planta):
+    nome, especie, dias_sem_rega, local_atual = planta
+    necessidades = ESPECIES_DISPONIVEIS[especie]
+    nome_alvo = outra_planta[0] if outra_planta else "sua vizinha"
+
+    if nome_alvo == nome and outra_planta:
+        nome_alvo = f"a outra {nome_alvo}"
+    
+    acoes_boas, acoes_ruins = [], []
+
+    if dias_sem_rega >= necessidades["rega_dias"]:
+        acoes_ruins.extend(["Tô morrendo de sede, me rega logo!", "Acho que esqueceram de mim, quero água."])
+    else:
+        acoes_boas.append("Por favor, me dê um pouco de água.")
+
+    lugares_ruins = [l for l in set(e["sol_ideal"] for e in ESPECIES_DISPONIVEIS.values()) if l != necessidades["sol_ideal"]]
+
+    if local_atual == necessidades["sol_ideal"]:
+        acoes_ruins.extend([f"Tire a {nome_alvo} daqui, ela está roubando minha luz!", f"A presença da {nome_alvo} tá me fazendo murchar, tira ela daqui."])
+        if lugares_ruins:
+            lugar_aleatorio = random.choice(lugares_ruins)
+            acoes_ruins.extend([f"Tô enjoada daqui, me coloque na {lugar_aleatorio}.", f"Manda a {nome_alvo} para a {lugar_aleatorio}, não suporto olhar pra ela!"])
+    else:
+        acoes_boas.append(f"Me coloque na {necessidades['sol_ideal']}, por favor.")
+        acoes_ruins.append(f"Se eu vou ficar nesse lugar horrível, traga a {nome_alvo} pra sofrer comigo!")
+
+    acoes_ruins.append(random.choice(["Me coloque na geladeira, não suporto mais esse clima.", f"Jogue a planta {nome_alvo} da janela para ver se ela voa.", f"Acho que a planta {nome_alvo} ficaria ótima como espanador de pó.", f"Tira a planta {nome_alvo} de perto de mim, a presença dela me enoja."]))
+    acoes_boas.append(random.choice(["Aprecie a minha beleza estonteante.", f"Coloque a gente mais perto, adoro a planta {nome_alvo}!", f"Faça roupinhas de crochê combinando para mim e para a planta {nome_alvo}."]))
+
+    return acoes_boas, acoes_ruins
+
 def classificar_acoes(id_planta):
     con = banco.conectar_banco()
     cur = con.cursor()
@@ -118,56 +149,8 @@ def classificar_acoes(id_planta):
 
     if not planta:
         return [], []
-
-    nome, especie, dias_sem_rega, local_atual = planta
-    necessidades = ESPECIES_DISPONIVEIS[especie]
-    
-    nome_alvo = outra_planta[0] if outra_planta else "sua vizinha"
-
-    if nome_alvo == nome and outra_planta:
-        nome_alvo = f"a outra {nome_alvo}"
-    
-    acoes_boas = []
-    acoes_ruins = []
-
-    if dias_sem_rega >= necessidades["rega_dias"]:
-        acoes_ruins.append("Tô morrendo de sede, me rega logo!")
-        acoes_ruins.append("Acho que esqueceram de mim, quero água.")
-    else:
-        acoes_boas.append("Por favor, me dê um pouco de água.")
-
-    lugares_possiveis = list(set([esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]))
-    lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
-
-    if local_atual == necessidades["sol_ideal"]:
-        acoes_ruins.append(f"Tire a {nome_alvo} daqui, ela está roubando minha luz!")
-        acoes_ruins.append(f"A presença da {nome_alvo} tá me fazendo murchar, tira ela daqui.")
         
-        if lugares_ruins:
-            lugar_aleatorio = random.choice(lugares_ruins)
-            acoes_ruins.append(f"Tô enjoada daqui, me coloque na {lugar_aleatorio}.")
-            acoes_ruins.append(f"Manda a {nome_alvo} para a {lugar_aleatorio}, não suporto olhar pra ela!")
-    else:
-        acoes_boas.append(f"Me coloque na {necessidades['sol_ideal']}, por favor.")
-        acoes_ruins.append(f"Se eu vou ficar nesse lugar horrível, traga a {nome_alvo} pra sofrer comigo!")
-
-    frases_ruins_absurdas = [
-        "Me coloque na geladeira, não suporto mais esse clima.",
-        f"Jogue a planta {nome_alvo} da janela para ver se ela voa.",
-        f"Acho que a planta {nome_alvo} ficaria ótima como espanador de pó.",
-        f"Tira a planta {nome_alvo} de perto de mim, a presença dela me enoja."
-    ]
-    
-    frases_boas_absurdas = [
-        "Aprecie a minha beleza estonteante.",
-        f"Coloque a gente mais perto, adoro a planta {nome_alvo}!",
-        f"Faça roupinhas de crochê combinando para mim e para a planta {nome_alvo}."
-    ]
-
-    acoes_ruins.append(random.choice(frases_ruins_absurdas))
-    acoes_boas.append(random.choice(frases_boas_absurdas))
-
-    return acoes_boas, acoes_ruins
+    return gerar_frases_planta(planta, outra_planta)
 
 def pegar_acao_unica(lista_acoes, pedidos_usados):
     if not lista_acoes:
@@ -310,45 +293,42 @@ def mover_planta(id_planta, novo_local):
     registrar_acao_historico(id_planta, f"Humano moveu a planta para {novo_local}")
     return True
 
+def interpretar_mensagem(mensagem):
+    msg_lower = mensagem.lower()
+    intencoes = {
+        "agua": any(p in msg_lower for p in ["água", "sede", "rega"]),
+        "local": next((l for l in ["sombra", "meia-sombra", "sol_direto"] if l in msg_lower), None),
+        "treta": any(p in msg_lower for p in ["tira", "roubando", "enoja", "longe", "janela", "espanador", "sofrer", "talarica"])
+    }
+    return intencoes, msg_lower
+
 def processar_atendimento(id_planta, mensagem):
+    intencoes, msg_lower = interpretar_mensagem(mensagem)
+    acao_realizada = f"Atendeu: {mensagem}"
+    
     con = banco.conectar_banco()
     cur = con.cursor()
-
-    # 1. Marca a planta como atendida
     cur.execute("UPDATE Plantas SET ja_atendida = 1 WHERE id = ?", (id_planta,))
 
-    acao_realizada = f"Atendeu: {mensagem}"
-    msg_lower = mensagem.lower()
-
-    # 2. Lógica de Água e Sol
-    if any(palavra in msg_lower for palavra in ["água", "sede", "rega"]):
+    if intencoes["agua"]:
         cur.execute("UPDATE Plantas SET dias_sem_rega = 0 WHERE id = ?", (id_planta,))
         acao_realizada += " 💧"
 
-    for local in ["sombra", "meia-sombra", "sol_direto"]:
-        if local in msg_lower:
-            cur.execute("UPDATE Plantas SET local_atual = ? WHERE id = ?", (local, id_planta))
-            acao_realizada += f" ☀️ ({local})"
+    if intencoes["local"]:
+        cur.execute("UPDATE Plantas SET local_atual = ? WHERE id = ?", (intencoes["local"], id_planta))
+        acao_realizada += f" ☀️ ({intencoes['local']})"
 
-    # 3. Lógica de Afinidade
     cur.execute("SELECT id, nome_customizado FROM Plantas WHERE id != ?", (id_planta,))
     todas_outras = cur.fetchall()
 
-    for outra in todas_outras:
-        id_outra, nome_outra = outra
-        
+    for id_outra, nome_outra in todas_outras:
         if len(nome_outra) > 1 and nome_outra.lower() in msg_lower:
             cur.execute("SELECT nivel_afinidade FROM Relacionamentos WHERE planta_origem_id = ? AND planta_destino_id = ?", (id_planta, id_outra))
             res = cur.fetchone()
             
             if res:
-                afinidade = res[0]
-                if any(p in msg_lower for p in ["tira", "roubando", "enoja", "longe", "janela", "espanador", "sofrer", "talarica"]):
-                    nova_afinidade = max(0, afinidade - 15)
-                    acao_realizada += f" | 💔 Treta com {nome_outra}"
-                else:
-                    nova_afinidade = min(50, afinidade + 15)
-                    acao_realizada += f" | 💖 Amizade com {nome_outra}"
+                nova_afinidade = max(0, res[0] - 15) if intencoes["treta"] else min(50, res[0] + 15)
+                acao_realizada += f" | 💔 Treta com {nome_outra}" if intencoes["treta"] else f" | 💖 Amizade com {nome_outra}"
                 
                 cur.execute('''
                     UPDATE Relacionamentos SET nivel_afinidade = ? 
