@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Jardim</title>
+    <style>
+        :root {
+            --bg-gradiente-inicio: #fae1da;
+            --bg-gradiente-fim: #e3f4e1;
+            --card-background: #fffdfd;
+            --card-sombra: rgba(0, 0, 0, 0.05);
+            --texto-principal: #6b4f3b;
+            --texto-secundario: #8a7363;
+            --botao-principal: #e88396;
+            --botao-principal-hover: #d46f82;
+            --texto-botao: #ffffff;
+            --botao-secundario: #fceeed;
+            --botao-secundario-texto: #333333;
+            --anel-avatar: #519967;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-gradiente-inicio), var(--bg-gradiente-fim));
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+        }
+
+        .titulo-secao h1 {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            font-size: 2.5rem;
+            color: var(--texto-principal);
+            font-weight: normal;
+            margin-bottom: 5px;
+        }
+
+        .titulo-secao p {
+            color: var(--texto-secundario);
+            font-size: 1rem;
+        }
+
+        .btn-nova-planta {
+            background-color: var(--botao-principal);
+            color: var(--texto-botao);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px var(--card-sombra);
+            transition: background 0.2s;
+        }
+
+        .btn-nova-planta:hover {
+            background-color: var(--botao-principal-hover);
+        }
+
+        .lista-plantas {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-planta {
+            background-color: var(--card-background);
+            border-radius: 100px;
+            padding: 15px 40px 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px var(--card-sombra);
+        }
+
+        .planta-info-bloco {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .avatar-container {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            border: 3px solid var(--anel-avatar);
+            padding: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            flex-shrink: 0;
+        }
+
+        .avatar-container img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .avatar-default {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #f0fbf2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .avatar-default svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--anel-avatar);
+        }
+
+        .planta-detalhes h2 {
+            font-size: 1.4rem;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .planta-detalhes p {
+            color: var(--texto-secundario);
+            font-size: 0.9rem;
+        }
+
+        .btn-ver-pedidos {
+            color: var(--botao-principal);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .btn-ver-pedidos:hover {
+            color: var(--botao-principal-hover);
+        }
+
+        .painel-pedidos {
+            margin-top: 40px;
+            background-color: transparent;
+            display: none;
+        }
+
+        .painel-pedidos h3 {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            font-size: 1.8rem;
+            color: var(--texto-principal);
+            font-weight: normal;
+            margin-bottom: 20px;
+        }
+
+        .card-pedido {
+            background-color: var(--card-background);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 4px 15px var(--card-sombra);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .texto-pedido {
+            font-size: 1.15rem;
+            color: #444;
+            line-height: 1.5;
+        }
+
+        .botoes-pedido-container {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-recusar {
+            background-color: var(--botao-secundario);
+            color: var(--botao-secundario-texto);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-atender {
+            background-color: var(--botao-principal);
+            color: var(--texto-botao);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .modal-cadastro {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            justify-content: center; align-items: center;
+            padding: 20px;
+        }
+
+        .modal-conteudo {
+            background: #fdf2f1;
+            padding: 30px; 
+            border-radius: 16px;
+            width: 100%; 
+            max-width: 400px; 
+            display: flex; 
+            flex-direction: column;
+            position: relative;
+        }
+
+        .btn-fechar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--texto-principal);
+            cursor: pointer;
+        }
+
+        .modal-conteudo h2 {
+            color: var(--texto-principal);
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            font-weight: normal;
+        }
+
+        .upload-foto-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .upload-foto-circulo {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 3px solid var(--anel-avatar);
+            background-color: #fce8e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            padding: 4px;
+        }
+
+        .upload-foto-circulo svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--texto-principal);
+        }
+
+        #preview-foto {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .grupo-input {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .grupo-input label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .grupo-input input, .grupo-input select {
+            padding: 12px;
+            border: 1px solid #f0d8d5;
+            border-radius: 12px;
+            background-color: #fef8f8;
+            font-size: 0.95rem;
+            color: #555;
+            outline: none;
+        }
+
+        .grupo-input input:focus, .grupo-input select:focus {
+            border-color: var(--botao-principal);
+        }
+
+        .btn-plantar {
+            background-color: var(--botao-principal);
+            color: var(--texto-botao);
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn-plantar:hover {
+            background-color: var(--botao-principal-hover);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div class="titulo-secao">
+                <h1>Meu Jardim</h1>
+                <p id="contador-plantas">0 plantinhas no canteiro</p>
+            </div>
+            <button class="btn-nova-planta" onclick="abrirModalCadastro()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                Nova plantinha
+            </button>
+        </div>
+
+        <div class="lista-plantas" id="container-lista">
+        </div>
+
+        <div class="painel-pedidos" id="painel-pedidos">
+            <h3>Pedidos de hoje</h3>
+            <div class="card-pedido">
+                <div class="texto-pedido" id="texto-pedido-conteudo"></div>
+                <div class="botoes-pedido-container">
+                    <button class="btn-recusar" onclick="fecharPainelPedidos()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        Não
+                    </button>
+                    <button class="btn-atender" id="btn-confirmar-atendimento">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                        Atender
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-cadastro" id="modal-cadastro" onclick="fecharModalCadastro(event)">
+        <div class="modal-conteudo" onclick="event.stopPropagation()">
+            <button class="btn-fechar" onclick="fecharModalCadastro(event)">&#10005;</button>
+            <h2>Adicionar ao jardim</h2>
+            
+            <form id="form-cadastro">
+                <div class="upload-foto-container">
+                    <label class="upload-foto-circulo" for="input-foto">
+                        <img id="preview-foto" src="" alt="Preview da planta">
+                        <svg id="icone-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </label>
+                    <input type="file" id="input-foto" name="foto" accept="image/*" style="display: none;" onchange="previewImagem(event)">
+                </div>
+
+                <div class="grupo-input">
+                    <label>Nome</label>
+                    <input type="text" name="nome" required placeholder="Ex: Doroteia">
+                </div>
+                
+                <div class="grupo-input">
+                    <label>Espécie</label>
+                    <select name="especie" required>
+                        <option value="Jiboia">Jiboia</option>
+                        <option value="Samambaia">Samambaia</option>
+                        <option value="Cacto">Cacto</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-plantar">Plantar no jardim</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = ""; 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            carregarPlantas();
+            carregarPedidosGlobais();
+        });
+
+        async function carregarPlantas() {
+            try {
+                const response = await fetch(`${API_BASE}/api/plantas`);
+                const plantas = await response.json();
+                
+                const container = document.getElementById("container-lista");
+                const contador = document.getElementById("contador-plantas");
+                
+                container.innerHTML = "";
+                contador.innerText = `${plantas.length} ${plantas.length === 1 ? 'plantinha' : 'plantinhas'} no canteiro`;
+
+                plantas.forEach(planta => {
+                    const card = document.createElement("div");
+                    card.className = "card-planta";
+                    card.innerHTML = `
+                        <div class="planta-info-bloco">
+                            <div class="avatar-container">
+                                ${planta.foto_url && !planta.foto_url.includes('default_planta.png') 
+                                    ? `<img src="${planta.foto_url}" alt="${planta.nome}">`
+                                    : `<div class="avatar-default">
+                                         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5.67-1.5 1.5-1.5 1.5.67 1.5 1.5zm-1.5-3.5c-.55 0-1-.45-1-1V8c0-.55.45-1 1-1s1.45 1 1 1v5c0 .55-.45 1-1 1z"/></svg>
+                                       </div>`
+                                }
+                            </div>
+                            <div class="planta-detalhes">
+                                <h2>${planta.nome}</h2>
+                                <p>${planta.especie}</p>
+                            </div>
+                        </div>
+                        <button class="btn-ver-pedidos" onclick="mostrarPedidoPlanta(${planta.id})">ver pedidos &rarr;</button>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error("Erro ao buscar plantas:", error);
+            }
+        }
+
+        let pedidosDoTurnoAtuais = [];
+
+        async function carregarPedidosGlobais() {
+            try {
+                const response = await fetch(`${API_BASE}/api/turno`);
+                const dados = await response.json();
+                pedidosDoTurnoAtuais = dados.pedidos_do_turno || [];
+            } catch (error) {
+                console.error("Erro ao carregar os turnos:", error);
+            }
+        }
+
+        function mostrarPedidoPlanta(idPlanta) {
+            const pedidoEncontrado = pedidosDoTurnoAtuais.find(p => p.id_planta === idPlanta);
+            const caixaTexto = document.getElementById("texto-pedido-conteudo");
+            const btnAtender = document.getElementById("btn-confirmar-atendimento");
+            
+            if (pedidoEncontrado) {
+                caixaTexto.innerText = `"${pedidoEncontrado.mensagem}"`;
+            } else {
+                caixaTexto.innerText = `"Estou ótima por aqui, sem pedidos no momento!"`;
+            }
+
+            btnAtender.onclick = () => atenderPedido(idPlanta);
+
+            document.getElementById("painel-pedidos").style.display = "block";
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        async function atenderPedido(idPlanta) {
+            try {
+                const response = await fetch(`${API_BASE}/api/regar/${idPlanta}`, { method: 'POST' });
+                if (response.ok) {
+                    fecharPainelPedidos();
+                    await carregarPedidosGlobais();
+                    carregarPlantas();
+                }
+            } catch (error) {
+                alert("Erro ao processar atendimento.");
+            }
+        }
+
+        function fecharPainelPedidos() {
+            document.getElementById("painel-pedidos").style.display = "none";
+        }
+
+        function abrirModalCadastro() {
+            document.getElementById("modal-cadastro").style.display = "flex";
+        }
+
+        function fecharModalCadastro(e) {
+            if (e.target.id === 'modal-cadastro' || e.target.classList.contains('btn-fechar')) {
+                document.getElementById("modal-cadastro").style.display = "none";
+            }
+        }
+
+        function previewImagem(event) {
+            const input = event.target;
+            const preview = document.getElementById('preview-foto');
+            const icone = document.getElementById('icone-camera');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    icone.style.display = 'none';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        document.getElementById("form-cadastro").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/cadastrar`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    document.getElementById("modal-cadastro").style.display = "none";
+                    e.target.reset();
+                    
+                    document.getElementById('preview-foto').style.display = 'none';
+                    document.getElementById('preview-foto').src = '';
+                    document.getElementById('icone-camera').style.display = 'block';
+
+                    carregarPlantas();
+                } else {
+                    const erroDados = await response.json();
+                    alert(`Erro: ${erroDados.erro}`);
+                }
+            } catch (error) {
+                console.error("Erro ao cadastrar:", error);
+            }
+        });
+    </script>
+</body>
+</html>

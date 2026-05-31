@@ -14,7 +14,8 @@ def criar_tabelas():
             nome_customizado TEXT NOT NULL,
             especie TEXT NOT NULL,
             dias_sem_rega INTEGER DEFAULT 0,
-            local_atual TEXT NOT NULL
+            local_atual TEXT NOT NULL,
+            foto_perfil TEXT DEFAULT 'default_planta.png'
         )
     ''')
 

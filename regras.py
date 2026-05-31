@@ -16,16 +16,17 @@ AFINIDADE_INICIAL_ESPECIES = {
 def conectar():
     return sqlite3.connect('banco_jardim.db')
 
-def cadastrar_nova_planta(nome_customizado, especie):
+def cadastrar_nova_planta(nome_customizado, especie, nome_arquivo_foto='default_planta.png'):
     local_inicial = ESPECIES_DISPONIVEIS[especie]["sol_ideal"]
     
     conexao = conectar()
     cursor = conexao.cursor()
 
+    # Incluindo a foto_perfil no INSERT
     cursor.execute('''
-        INSERT INTO Plantas (nome_customizado, especie, dias_sem_rega, local_atual)
-        VALUES (?, ?, 0, ?)
-    ''', (nome_customizado, especie, local_inicial))
+        INSERT INTO Plantas (nome_customizado, especie, dias_sem_rega, local_atual, foto_perfil)
+        VALUES (?, ?, 0, ?, ?)
+    ''', (nome_customizado, especie, local_inicial, nome_arquivo_foto))
     
     nova_planta_id = cursor.lastrowid
 
@@ -41,15 +42,8 @@ def cadastrar_nova_planta(nome_customizado, especie):
         afinidade_nova_para_antiga = max(0, min(50, afinidade_base_nova + random.randint(-15, 15)))
         afinidade_antiga_para_nova = max(0, min(50, afinidade_base_antiga + random.randint(-15, 15)))
         
-        cursor.execute('''
-            INSERT INTO Relacionamentos (planta_origem_id, planta_destino_id, nivel_afinidade) 
-            VALUES (?, ?, ?)
-        ''', (nova_planta_id, id_antiga, afinidade_nova_para_antiga))
-        
-        cursor.execute('''
-            INSERT INTO Relacionamentos (planta_origem_id, planta_destino_id, nivel_afinidade) 
-            VALUES (?, ?, ?)
-        ''', (id_antiga, nova_planta_id, afinidade_antiga_para_nova))
+        cursor.execute('INSERT INTO Relacionamentos VALUES (?, ?, ?)', (nova_planta_id, id_antiga, afinidade_nova_para_antiga))
+        cursor.execute('INSERT INTO Relacionamentos VALUES (?, ?, ?)', (id_antiga, nova_planta_id, afinidade_antiga_para_nova))
 
     conexao.commit()
     conexao.close()

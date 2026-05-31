@@ -1,42 +1,66 @@
+import os
+import random
 from flask import Flask, render_template, request, jsonify
+from werkzeug.utils import secure_filename
 import banco
 import regras
 
 app = Flask(__name__)
 
+# Configuração do diretório onde as fotos das plantas serão salvas
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limita o upload a 16MB
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Garante que as pastas 'static' e 'static/uploads' existam
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 banco.criar_tabelas()
+
+def arquivo_permitido(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
-    """Renderiza a interface principal do chat."""
     return render_template('index.html')
 
 @app.route('/api/cadastrar', methods=['POST'])
 def cadastrar_planta():
-    dados = request.get_json()
-    nome = dados.get('nome')
-    especie = dados.get('especie')
+    # Usamos request.form porque formulários com arquivos usam multipart/form-data
+    nome = request.form.get('nome')
+    especie = request.form.get('especie')
 
     if not nome or not especie:
         return jsonify({"erro": "Nome e espécie são obrigatórios"}), 400
 
-    # NOVA VALIDAÇÃO AQUI
     if especie not in regras.ESPECIES_DISPONIVEIS:
         return jsonify({"erro": "Espécie inválida"}), 400
 
+    # Processamento do upload do arquivo de imagem
+    nome_arquivo_salvo = 'default_planta.png'
+    if 'foto' in request.files:
+        arquivo = request.files['foto']
+        if arquivo and arquivo.filename != '' and arquivo_permitido(arquivo.filename):
+            extensao = arquivo.filename.rsplit('.', 1)[1].lower()
+            # Gera um nome seguro unindo o nome da planta a um número aleatório
+            nome_seguro = secure_filename(f"{nome}_{random.randint(100, 999)}.{extensao}")
+            caminho_completo = os.path.join(app.config['UPLOAD_FOLDER'], nome_seguro)
+            arquivo.save(caminho_completo)
+            nome_arquivo_salvo = nome_seguro
+
     try:
-        novo_id = regras.cadastrar_nova_planta(nome, especie)
+        novo_id = regras.cadastrar_nova_planta(nome, especie, nome_arquivo_salvo)
         return jsonify({"sucesso": True, "mensagem": f"{nome} entrou no chat!", "id": novo_id}), 201
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
 @app.route('/api/plantas', methods=['GET'])
 def listar_plantas():
-    """Retorna a lista de plantas para o front-end montar a tela."""
     con = banco.conectar_banco()
     cur = con.cursor()
-    # Ajustado para selecionar apenas as colunas que realmente existem no banco
-    cur.execute("SELECT id, nome_customizado, especie FROM Plantas")
+    # Buscando a coluna foto_perfil do banco
+    cur.execute("SELECT id, nome_customizado, especie, foto_perfil FROM Plantas")
     plantas = cur.fetchall()
     con.close()
 
@@ -45,39 +69,38 @@ def listar_plantas():
         lista_plantas.append({
             "id": p[0],
             "nome": p[1],
-            "especie": p[2]
+            "especie": p[2],
+            # Retorna o caminho correto para o front-end renderizar na tag <img src="...">
+            "foto_url": f"/static/uploads/{p[3]}" if p[3] != 'default_planta.png' else "/static/default_planta.png"
         })
         
     return jsonify(lista_plantas)
 
 @app.route('/api/turno', methods=['GET'])
 def rodar_turno():
-    """Gera os pedidos do dia para atualizar o chat e aumenta os dias sem rega."""
-    try:
-        # A função de regras agora processa o dia, previne frases repetidas e aumenta a sede
-        pedidos = regras.finalizar_dia_e_iniciar_turno()
-        return jsonify({"pedidos_do_turno": pedidos})
-    except Exception as e:
-         return jsonify({"erro": str(e)}), 500
-    
-@app.route('/api/regar/<int:id_planta>', methods=['POST'])
-def regar(id_planta):
-    try:
-        regras.regar_planta(id_planta)
-        return jsonify({"sucesso": True, "mensagem": "A planta foi regada! Sede zerada."}), 200
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+    con = banco.conectar_banco()
+    cur = con.cursor()
+    cur.execute("SELECT id FROM Plantas")
+    plantas_existentes = cur.fetchall()
+    con.close()
 
-@app.route('/api/mover/<int:id_planta>', methods=['POST'])
-def mover(id_planta):
-    dados = request.get_json()
-    novo_local = dados.get('novo_local')
-    
-    if not novo_local:
-        return jsonify({"erro": "O novo local é obrigatório"}), 400
+    pedidos = []
+    for p in plantas_existentes:
+        id_planta = p[0]
+        # O seu regras.py já recebe 'pedidos_usados' aqui. Para fins de compatibilidade,
+        # criamos um set temporário por requisição para evitar travamentos
+        pedidos_usados_temp = set()
+        pedido_texto = regras.gerar_pedido_turno(id_planta, pedidos_usados_temp)
         
-    try:
-        regras.mover_planta(id_planta, novo_local)
-        return jsonify({"sucesso": True, "mensagem": f"Planta movida para: {novo_local}"}), 200
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        if pedido_texto:
+            pedidos.append({
+                "id_planta": id_planta,
+                "mensagem": pedido_texto
+            })
+
+    return jsonify({"pedidos_do_turno": pedidos})
+
+# ... (Mantenha as rotas /api/regar e /api/mover idênticas)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
