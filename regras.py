@@ -211,3 +211,43 @@ def finalizar_dia_e_iniciar_turno():
             })
             
     return novas_mensagens
+
+def registrar_acao_historico(id_planta, acao):
+    con = conectar()
+    cur = con.cursor()
+    
+    cur.execute("SELECT COALESCE(MAX(dia_do_jogo), 1) FROM Historico_Acoes")
+    resultado = cur.fetchone()
+    dia_atual = resultado[0] if resultado else 1
+
+    cur.execute('''
+        INSERT INTO Historico_Acoes (dia_do_jogo, planta_id, acao_realizada)
+        VALUES (?, ?, ?)
+    ''', (dia_atual, id_planta, acao))
+    
+    con.commit()
+    con.close()
+
+def regar_planta(id_planta):
+    con = conectar()
+    cur = con.cursor()
+    cur.execute("UPDATE Plantas SET dias_sem_rega = 0 WHERE id = ?", (id_planta,))
+    con.commit()
+    con.close()
+    
+    registrar_acao_historico(id_planta, "Humano regou a planta")
+    return True
+
+def mover_planta(id_planta, novo_local):
+    lugares_validos = [esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]
+    if novo_local not in lugares_validos:
+        raise ValueError("Local inválido para as regras do jardim")
+        
+    con = conectar()
+    cur = con.cursor()
+    cur.execute("UPDATE Plantas SET local_atual = ? WHERE id = ?", (novo_local, id_planta))
+    con.commit()
+    con.close()
+    
+    registrar_acao_historico(id_planta, f"Humano moveu a planta para {novo_local}")
+    return True

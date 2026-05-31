@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Chat 🌱</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2e1a 0%, #2d4a2d 50%, #1a3a1a 100%);
+            min-height: 100vh;
+            color: #e8f5e9;
+        }
+        header {
+            background: rgba(0,0,0,0.4);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(100,200,100,0.3);
+        }
+        header h1 { font-size: 1.5rem; color: #a5d6a7; }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(100,200,100,0.25);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .panel h2 {
+            font-size: 1rem;
+            color: #81c784;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+        }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.85rem; color: #a5d6a7; margin-bottom: 4px; }
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(100,200,100,0.3);
+            background: rgba(0,0,0,0.3);
+            color: #e8f5e9;
+            font-size: 0.9rem;
+        }
+        input::placeholder { color: #558b5a; }
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #388e3c;
+            color: white;
+            margin-bottom: 8px;
+        }
+        .btn-primary:hover { background: #2e7d32; }
+        .btn-secondary {
+            background: rgba(56, 142, 60, 0.25);
+            color: #a5d6a7;
+            border: 1px solid rgba(100,200,100,0.3);
+        }
+        .btn-secondary:hover { background: rgba(56, 142, 60, 0.4); }
+        #plantas-lista {
+            list-style: none;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .planta-item {
+            background: rgba(56,142,60,0.2);
+            border: 1px solid rgba(100,200,100,0.2);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+        }
+        .planta-nome { font-weight: 600; color: #c8e6c9; }
+        .planta-especie { color: #81c784; font-size: 0.78rem; margin-top: 2px; }
+        
+        /* --- NOVOS ESTILOS PARA AS AÇÕES --- */
+        .acoes-planta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .acoes-planta button, .acoes-planta select {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            width: auto;
+            flex: 1;
+        }
+        .btn-regar { background: #1976d2; color: white; font-weight: normal; }
+        .btn-regar:hover { background: #1565c0; }
+        .btn-mover { background: #f57c00; color: white; font-weight: normal; }
+        .btn-mover:hover { background: #ef6c00; }
+        .select-mover { 
+            background: rgba(0,0,0,0.5); 
+            border: 1px solid #f57c00; 
+            color: white;
+            min-width: 100%;
+            margin-bottom: 2px;
+        }
+        /* ----------------------------------- */
+
+        .chat-panel { display: flex; flex-direction: column; gap: 12px; }
+        #chat-box {
+            flex: 1;
+            min-height: 380px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(100,200,100,0.2);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .msg {
+            background: rgba(56,142,60,0.18);
+            border-left: 3px solid #388e3c;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            color: #dcedc8;
+            animation: fadeIn 0.3s ease;
+        }
+        .msg .msg-plant { font-weight: 700; color: #a5d6a7; margin-bottom: 3px; }
+        .msg-system {
+            color: #558b5a;
+            font-style: italic;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+        .msg-action {
+            color: #64b5f6; /* Cor azulada para destacar as ações do humano no chat */
+            font-style: italic;
+            font-size: 0.85rem;
+            text-align: right;
+            padding-right: 10px;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+        .status-bar {
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.2);
+            font-size: 0.82rem;
+            color: #81c784;
+            min-height: 36px;
+        }
+        @media (max-width: 640px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <span style="font-size:1.8rem">🌿</span>
+        <h1>Plant Chat — Jardim Interativo</h1>
+    </header>
+    <div class="container">
+        <aside>
+            <div class="panel" style="margin-bottom:16px">
+                <h2>🌱 Cadastrar Planta</h2>
+                <div class="form-group">
+                    <label for="nome">Nome da planta</label>
+                    <input type="text" id="nome" placeholder="Ex: Dona Flora">
+                </div>
+                <div class="form-group">
+                    <label for="especie">Espécie</label>
+                    <select id="especie">
+                        <option value="Jiboia">Jiboia</option>
+                        <option value="Samambaia">Samambaia</option>
+                        <option value="Cacto">Cacto</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="cadastrarPlanta()">Adicionar ao jardim</button>
+            </div>
+            <div class="panel">
+                <h2>🪴 Plantas no Jardim</h2>
+                <ul id="plantas-lista"><li class="msg-system">Nenhuma planta ainda.</li></ul>
+            </div>
+        </aside>
+        <section class="chat-panel">
+            <div class="panel" style="padding:12px 16px">
+                <h2 style="margin-bottom:0">💬 Chat do Jardim</h2>
+            </div>
+            <div id="chat-box">
+                <div class="msg-system">Bem-vindo ao Plant Chat! Cadastre plantas e avance os turnos para ver o que elas têm a dizer. 🌿</div>
+            </div>
+            <div class="status-bar" id="status">Pronto.</div>
+            <button class="btn-secondary" onclick="rodarTurno()">⏩ Avançar Turno (Novo Dia)</button>
+        </section>
+    </div>
+
+    <script>
+        const ESPECIES_INFO = {
+            Jiboia: { icon: '🍃', rega: '7 dias', sol: 'meia-sombra' },
+            Samambaia: { icon: '🌿', rega: '3 dias', sol: 'sombra' },
+            Cacto: { icon: '🌵', rega: '20 dias', sol: 'sol_direto' }
+        };
+
+        function setStatus(msg) {
+            document.getElementById('status').textContent = msg;
+        }
+
+        function addMsg(text, plant) {
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'msg';
+            if (plant) {
+                div.innerHTML = `<div class="msg-plant">${plant}</div>${text}`;
+            } else {
+                div.textContent = text;
+            }
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function addSystemMsg(text, isAction = false) {
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = isAction ? 'msg-action' : 'msg-system';
+            div.textContent = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function carregarPlantas() {
+            try {
+                const res = await fetch('/api/plantas');
+                const plantas = await res.json();
+                const lista = document.getElementById('plantas-lista');
+                lista.innerHTML = '';
+                
+                if (plantas.length === 0) {
+                    lista.innerHTML = '<li class="msg-system">Nenhuma planta ainda.</li>';
+                    return;
+                }
+                
+                plantas.forEach(p => {
+                    const info = ESPECIES_INFO[p.especie] || { icon: '🌱' };
+                    const li = document.createElement('li');
+                    li.className = 'planta-item';
+                    
+                    // --- CÓDIGO ATUALIZADO: Interface de Ações Injetada Aqui ---
+                    li.innerHTML = `
+                        <div class="planta-nome">${info.icon} ${p.nome}</div>
+                        <div class="planta-especie">${p.especie}</div>
+                        <div class="acoes-planta">
+                            <button class="btn-regar" onclick="regarPlanta(${p.id}, '${p.nome}')">💧 Regar</button>
+                            <select class="select-mover" id="local-${p.id}">
+                                <option value="sol_direto">☀️ Sol Direto</option>
+                                <option value="meia-sombra">⛅ Meia-sombra</option>
+                                <option value="sombra">☁️ Sombra</option>
+                            </select>
+                            <button class="btn-mover" onclick="moverPlanta(${p.id}, '${p.nome}')">Mover</button>
+                        </div>
+                    `;
+                    lista.appendChild(li);
+                });
+            } catch (e) {
+                console.error("Erro ao carregar plantas:", e);
+            }
+        }
+
+        // --- NOVAS FUNÇÕES DE INTERAÇÃO ---
+        async function regarPlanta(id, nome) {
+            setStatus(`Regando ${nome}...`);
+            try {
+                const res = await fetch(`/api/regar/${id}`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    addSystemMsg(`💧 Você regou ${nome}. A sede dela foi zerada!`, true);
+                    setStatus(data.mensagem);
+                } else {
+                    setStatus('Erro: ' + (data.erro || 'Falha ao regar'));
+                }
+            } catch (e) {
+                setStatus('Erro de conexão ao tentar regar.');
+            }
+        }
+
+        async function moverPlanta(id, nome) {
+            const selectLocal = document.getElementById(`local-${id}`);
+            const novo_local = selectLocal.value;
+            const texto_local = selectLocal.options[selectLocal.selectedIndex].text;
+            
+            setStatus(`Movendo ${nome}...`);
+            try {
+                const res = await fetch(`/api/mover/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ novo_local: novo_local })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    addSystemMsg(`📦 Você moveu ${nome} para: ${texto_local}.`, true);
+                    setStatus(data.mensagem);
+                } else {
+                    setStatus('Erro: ' + (data.erro || 'Falha ao mover'));
+                }
+            } catch (e) {
+                setStatus('Erro de conexão ao tentar mover.');
+            }
+        }
+        // ----------------------------------
+
+        async function cadastrarPlanta() {
+            const nome = document.getElementById('nome').value.trim();
+            const especie = document.getElementById('especie').value;
+            if (!nome) { setStatus('Por favor, insira um nome para a planta.'); return; }
+
+            setStatus('Cadastrando...');
+            try {
+                const res = await fetch('/api/cadastrar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, especie })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    addSystemMsg(`🌱 ${data.mensagem}`);
+                    document.getElementById('nome').value = '';
+                    carregarPlantas();
+                    setStatus('Planta cadastrada com sucesso!');
+                } else {
+                    setStatus('Erro: ' + (data.erro || 'Falha ao cadastrar'));
+                }
+            } catch (e) {
+                setStatus('Erro de conexão ao cadastrar.');
+            }
+        }
+
+        async function rodarTurno() {
+            setStatus('Avançando turno...');
+            try {
+                const res = await fetch('/api/turno');
+                const data = await res.json();
+                if (res.ok) {
+                    const pedidos = data.pedidos_do_turno;
+                    if (pedidos.length === 0) {
+                        addSystemMsg('🌙 As plantas estão em silêncio este turno.');
+                    } else {
+                        addSystemMsg('— Novo Dia —');
+                        pedidos.forEach(p => {
+                            addMsg(p.mensagem);
+                        });
+                    }
+                    setStatus(`Turno concluído — ${pedidos.length} mensagem(ns) gerada(s).`);
+                } else {
+                    setStatus('Erro ao avançar turno: ' + (data.erro || 'Falha'));
+                }
+            } catch (e) {
+                setStatus('Erro de conexão ao avançar turno.');
+            }
+        }
+
+        // Inicializa a lista ao abrir a página
+        carregarPlantas();
+    </script>
+</body>
+</html>

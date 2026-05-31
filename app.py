@@ -59,3 +59,25 @@ def rodar_turno():
         return jsonify({"pedidos_do_turno": pedidos})
     except Exception as e:
          return jsonify({"erro": str(e)}), 500
+    
+@app.route('/api/regar/<int:id_planta>', methods=['POST'])
+def regar(id_planta):
+    try:
+        regras.regar_planta(id_planta)
+        return jsonify({"sucesso": True, "mensagem": "A planta foi regada! Sede zerada."}), 200
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+@app.route('/api/mover/<int:id_planta>', methods=['POST'])
+def mover(id_planta):
+    dados = request.get_json()
+    novo_local = dados.get('novo_local')
+    
+    if not novo_local:
+        return jsonify({"erro": "O novo local é obrigatório"}), 400
+        
+    try:
+        regras.mover_planta(id_planta, novo_local)
+        return jsonify({"sucesso": True, "mensagem": f"Planta movida para: {novo_local}"}), 200
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
