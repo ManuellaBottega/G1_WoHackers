@@ -136,11 +136,9 @@ def atender_pedido(id_planta):
                     acao_realizada += f" 💔 (Fez mal para {nome_outra})"
                     
                 elif any(p in msg_lower for p in palavras_boas):
-                    # Adiciona 15 pontos de afinidade de AMBOS OS LADOS!
                     nova_afinidade = min(50, afinidade_atual + 15)
                     acao_realizada += f" 💖 (Aproximou de {nome_outra})"
 
-                # Atualiza a relação de ida e volta
                 cur.execute('''
                     UPDATE Relacionamentos SET nivel_afinidade = ? 
                     WHERE (planta_origem_id = ? AND planta_destino_id = ?) 
@@ -161,38 +159,38 @@ def avancar_dia():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
-@app.route('/api/diario', methods=['GET'])
-def buscar_diario():
-    con = banco.conectar_banco()
-    cur = con.cursor()
+# @app.route('/api/diario', methods=['GET'])
+# def buscar_diario():
+#     con = banco.conectar_banco()
+#     cur = con.cursor()
     
-    cur.execute('''
-        SELECT H.dia_do_jogo, P.nome_customizado, H.acao_realizada 
-        FROM Historico_Acoes H
-        JOIN Plantas P ON H.planta_id = P.id
-        ORDER BY H.id DESC LIMIT 15
-    ''')
-    historico = [{"dia": r[0], "nome": r[1], "acao": r[2]} for r in cur.fetchall()]
+    # cur.execute('''
+    #     SELECT H.dia_do_jogo, P.nome_customizado, H.acao_realizada 
+    #     FROM Historico_Acoes H
+    #     JOIN Plantas P ON H.planta_id = P.id
+    #     ORDER BY H.id DESC LIMIT 15
+    # ''')
+    # historico = [{"dia": r[0], "nome": r[1], "acao": r[2]} for r in cur.fetchall()]
     
-    cur.execute('''
-        SELECT P1.nome_customizado, P2.nome_customizado, R.nivel_afinidade
-        FROM Relacionamentos R
-        JOIN Plantas P1 ON R.planta_origem_id = P1.id
-        JOIN Plantas P2 ON R.planta_destino_id = P2.id
-        ORDER BY R.nivel_afinidade DESC
-    ''')
-    relacionamentos = []
-    for r in cur.fetchall():
-        if r[2] > 35:
-            status = "ama"
-        elif r[2] < 20:
-            status = "odeia"
-        else:
-            status = "neutro"
+    # cur.execute('''
+    #     SELECT P1.nome_customizado, P2.nome_customizado, R.nivel_afinidade
+    #     FROM Relacionamentos R
+    #     JOIN Plantas P1 ON R.planta_origem_id = P1.id
+    #     JOIN Plantas P2 ON R.planta_destino_id = P2.id
+    #     ORDER BY R.nivel_afinidade DESC
+    # ''')
+    # relacionamentos = []
+    # for r in cur.fetchall():
+    #     if r[2] > 35:
+    #         status = "ama"
+    #     elif r[2] < 20:
+    #         status = "odeia"
+    #     else:
+    #         status = "neutro"
             
 
-        if status != "neutro":
-            relacionamentos.append({"planta_origem": r[0], "planta_destino": r[1], "status": status, "nivel": r[2]})
+    #     if status != "neutro":
+    #         relacionamentos.append({"planta_origem": r[0], "planta_destino": r[1], "status": status, "nivel": r[2]})
             
     con.close()
     return jsonify({"historico": historico, "relacionamentos": relacionamentos}), 200
