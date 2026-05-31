@@ -1,10 +1,6 @@
 import sqlite3
 import random
 
-# ==========================================
-# DICIONÁRIOS DE DADOS DO JARDIM DA DISCÓRDIA
-# ==========================================
-
 ESPECIES_DISPONIVEIS = {
     "Jiboia": {"rega_dias": 7, "sol_ideal": "meia-sombra"},
     "Samambaia": {"rega_dias": 3, "sol_ideal": "sombra"},
@@ -72,10 +68,6 @@ AFINIDADE_INICIAL_ESPECIES = {
     }
 }
 
-# ==========================================
-# FUNÇÕES DO BANCO E REGRAS DE NEGÓCIO
-# ==========================================
-
 def conectar():
     return sqlite3.connect('banco_jardim.db')
 
@@ -127,50 +119,45 @@ def classificar_acoes(id_planta):
     nome, especie, dias_sem_rega, local_atual = planta
     necessidades = ESPECIES_DISPONIVEIS[especie]
     
-    # Previne quebra caso seja a única planta no jardim
     nome_alvo = outra_planta[0] if outra_planta else "sua vizinha"
+
+    if nome_alvo == nome and outra_planta:
+        nome_alvo = f"a outra {nome_alvo}"
     
     acoes_boas = []
     acoes_ruins = []
 
-    # --- LÓGICA DE SEDE ---
     if dias_sem_rega >= necessidades["rega_dias"]:
-        acoes_ruins.append(f"Tô morrendo de sede, me rega logo!")
-        acoes_ruins.append(f"Nossa, fica aí regando todo mundo... Menos eu, quero água.")
+        acoes_ruins.append("Tô morrendo de sede, me rega logo!")
+        acoes_ruins.append("Acho que esqueceram de mim, quero água.")
     else:
-        acoes_boas.append(f"Por favor, me dê um pouco de água.")
+        acoes_boas.append("Por favor, me dê um pouco de água.")
 
-    # --- LÓGICA DE SOL E KARMA ---
     lugares_possiveis = list(set([esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]))
     lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
 
     if local_atual == necessidades["sol_ideal"]:
-        # Se está no lugar bom, aproveita pra tentar afundar a outra planta
-        acoes_ruins.append(f"Tire a {nome_alvo} daqui, ela está roubando o meu brilho!")
-        acoes_ruins.append(f"A presença da {nome_alvo} é tão entediante que tá me fazendo murchar, tira ela daqui.")
+        acoes_ruins.append(f"Tire a {nome_alvo} daqui, ela está roubando minha luz!")
+        acoes_ruins.append(f"A presença da {nome_alvo} tá me fazendo murchar, tira ela daqui.")
         
         if lugares_ruins:
             lugar_aleatorio = random.choice(lugares_ruins)
-            acoes_ruins.append(f"Tô sentindo umas vibrações negativas, me coloque em {lugar_aleatorio}.")
-            acoes_ruins.append(f"Manda a {nome_alvo} para {lugar_aleatorio}, acho bom ela pegar outros ares...")
+            acoes_ruins.append(f"Tô enjoada daqui, me coloque na {lugar_aleatorio}.")
+            acoes_ruins.append(f"Manda a {nome_alvo} para a {lugar_aleatorio}, não suporto olhar pra ela!")
     else:
-        acoes_boas.append(f"Me coloque em {necessidades['sol_ideal']}, eu imploro.")
-        acoes_ruins.append(f"Ficar nesse lugar horrível enquanto a {nome_alvo} tá lá de boa é uma injustiça, traga ela já aqui!")
+        acoes_boas.append(f"Me coloque na {necessidades['sol_ideal']}, por favor.")
+        acoes_ruins.append(f"Se eu vou ficar nesse lugar horrível, traga a {nome_alvo} pra sofrer comigo!")
 
     frases_ruins_absurdas = [
-        f"Coloque a planta {nome_alvo} na geladeira.",
+        "Me coloque na geladeira, não suporto mais esse clima.",
         f"Jogue a planta {nome_alvo} da janela para ver se ela voa.",
         f"Acho que a planta {nome_alvo} ficaria ótima como espanador de pó.",
-        f"Ouvi dizer que a planta {nome_alvo} estava se sentindo solitária, que tal deixar ela dar umas voltas de ônibus?",
-        f"A planta{nome_alvo} parece meio murchinha... Eu acho que ela precisa de umas unhas de pé"
-        f"Coloque um pouco de desinfetante na terra da planta {nome_alvo}, ontem ela deu uma festa cabulosa pra baratas"
+        f"Tira a planta {nome_alvo} de perto de mim, a presença dela me enoja."
     ]
     
     frases_boas_absurdas = [
-        f"Aprecie a beleza estonteante da planta {nome}.",
+        "Aprecie a minha beleza estonteante.",
         f"Coloque a gente mais perto, adoro a planta {nome_alvo}!",
-        f"Vamos fazer uma sessão de fotos juntos, eu e a planta {nome_alvo} somos um casal tão fotogênico!",
-        f"Guarde as folhas caídas da planta {nome_alvo} e distribua para seus amigos humanos, para que elas conheçam as palavras de {nome_alvo} também.",
         f"Faça roupinhas de crochê combinando para mim e para a planta {nome_alvo}."
     ]
 
@@ -216,9 +203,6 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
 
     cur.execute("SELECT nivel_afinidade FROM Relacionamentos WHERE planta_origem_id = ? AND planta_destino_id = ?", (id_p1, id_p2))
     rela_p1p2 = cur.fetchone()[0]
-    
-    cur.execute("SELECT nivel_afinidade FROM Relacionamentos WHERE planta_origem_id = ? AND planta_destino_id = ?", (id_p2, id_p1))
-    rela_p2p1 = cur.fetchone()[0]
 
     cur.execute('''
         SELECT R1.planta_destino_id 
@@ -230,31 +214,19 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     alvo_ciume = cur.fetchone()
     
     boas_p1, ruins_p1 = classificar_acoes(id_p1)
-    boas_p2, ruins_p2 = classificar_acoes(id_p2)
     con.close()
 
-    # Gera ciúme se houver um triângulo amoroso
     if alvo_ciume:
-        rela_p1p2 = 10
-        rela_p2p1 = 10
-        ruins_p1.append(f"Essa {nome_p2} é uma grande de uma talarica!")
-        ruins_p2.append(f"Sua presença me enoja {nome_p1}, você nunca vai ter quem você quer.")
+        ruins_p1.append(f"Fica longe, o amor da minha vida prefere a mim! ({nome_p1})")
 
-    if rela_p1p2 < 20 and rela_p2p1 > 30:
-        if ruins_p2: return f"{nome_p2}: {pegar_acao_unica(ruins_p2, pedidos_usados)}"
-    elif rela_p2p1 < 20 and rela_p1p2 > 30:
-        if ruins_p1: return f"{nome_p1}: {pegar_acao_unica(ruins_p1, pedidos_usados)}"
-    elif rela_p1p2 < 20:
-        if ruins_p2: return f"{nome_p1}: Ei humano, {pegar_acao_unica(ruins_p2, pedidos_usados).lower()}"
-    elif rela_p1p2 > 30:
-        if boas_p2: return f"{nome_p1}: Humano, {pegar_acao_unica(boas_p2, pedidos_usados).lower()}"
-    elif rela_p2p1 < 20:
-        if ruins_p1: return f"{nome_p2}: Que tal se você {pegar_acao_unica(ruins_p1, pedidos_usados).lower()}?"
-    elif rela_p2p1 > 30:
-        if boas_p1: return f"{nome_p2}: Faça um favor e {pegar_acao_unica(boas_p1, pedidos_usados).lower()}"
+    if rela_p1p2 < 25:
+        if ruins_p1: return pegar_acao_unica(ruins_p1, pedidos_usados)
+    elif rela_p1p2 > 35:
+        if boas_p1: return pegar_acao_unica(boas_p1, pedidos_usados)
     else:
-        if boas_p1: 
-            return f"{nome_p1}: {pegar_acao_unica(boas_p1, pedidos_usados)}"
+        todas_acoes = boas_p1 + ruins_p1
+        if todas_acoes: return pegar_acao_unica(todas_acoes, pedidos_usados)
+
     return None
 
 def finalizar_dia_e_iniciar_turno():
