@@ -18,9 +18,9 @@ Um jogo para que suas plantas reais deixem de ser monótonas e chatas, em vez de
 * **Banco de Dados:** SQLite3 (nativo)
 * **Front-end:** HTML5, CSS3, JavaScript (Vanilla API Fetch)
 
-## 🚀 Como executar o projeto localmente (Windows)
+## 🚀 Como executar o projeto localmente
 
-Siga os passos abaixo no seu terminal (PowerShell ou CMD) para instalar e iniciar o servidor do jogo:
+Siga os passos abaixo no seu terminal para instalar e iniciar o servidor do jogo:
 
 1. **Abra a pasta do projeto no terminal.**
 
@@ -29,10 +29,11 @@ Siga os passos abaixo no seu terminal (PowerShell ou CMD) para instalar e inicia
    python -m venv venv
 
 3. **Ative o ambiente virtual:**
-    .\venv\Scripts\activate
+    **Windows:** .\venv\Scripts\activate
+    **Linux:** source venv/bin/activate
 
 4. **Instale as dependências necessárias:**
-    pip install -r requirements.txt
+    python -m pip install -r requirements.txt
 
 5. **Inicie o servidor local:**
     python app.py
