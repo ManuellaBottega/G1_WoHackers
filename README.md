@@ -1,4 +1,4 @@
-# G1_WoHackers# 🌿 Meu Jardim
+# G1_WoHackers# 🌿 Jardim Alive
 
 Um jogo para que suas plantas reais deixem de ser monótonas e chatas, em vez de morrerem sem motivo aparente, suas plantas murcharão devido a ciúmes e brigas... Tente não se deixar levar pelos pedidos de suas plantas para não perder todo seu jardim!
 
