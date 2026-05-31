@@ -1,5 +1,8 @@
 import sqlite3
 import random
+import banco 
+
+# DICIONÁRIOS DE DADOS DO JARDIM
 
 ESPECIES_DISPONIVEIS = {
     "Jiboia": {"rega_dias": 7, "sol_ideal": "meia-sombra"},
@@ -68,13 +71,13 @@ AFINIDADE_INICIAL_ESPECIES = {
     }
 }
 
-def conectar():
-    return sqlite3.connect('banco_jardim.db')
+# FUNÇÕES DE REGRAS DE RELACIONAMENTO E GERAÇÃO DE PEDIDOS
 
 def cadastrar_nova_planta(nome_customizado, especie, nome_arquivo_foto='default_planta.png'):
     local_inicial = ESPECIES_DISPONIVEIS[especie]["sol_ideal"]
     
-    conexao = conectar()
+    # Usando a função do banco.py
+    conexao = banco.conectar_banco()
     cursor = conexao.cursor()
 
     cursor.execute('''
@@ -104,7 +107,7 @@ def cadastrar_nova_planta(nome_customizado, especie, nome_arquivo_foto='default_
     return nova_planta_id
 
 def classificar_acoes(id_planta):
-    con = conectar()
+    con = banco.conectar_banco()
     cur = con.cursor()
     cur.execute("SELECT nome_customizado, especie, dias_sem_rega, local_atual FROM Plantas WHERE id = ?", (id_planta,))
     planta = cur.fetchone()
@@ -178,7 +181,7 @@ def pegar_acao_unica(lista_acoes, pedidos_usados):
     return lista_acoes[0]
 
 def gerar_pedido_turno(id_p1, pedidos_usados):
-    con = conectar()
+    con = banco.conectar_banco()
     cur = con.cursor()
     
     cur.execute("SELECT nome_customizado, ja_atendida FROM Plantas WHERE id = ?", (id_p1,))
@@ -217,7 +220,7 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     con.close()
 
     if alvo_ciume:
-        ruins_p1.append(f"Fica longe, o amor da minha vida prefere a mim! ({nome_p1})")
+        ruins_p1.append(f"Essa {nome_p2} é uma grande de uma talarica!")
 
     if rela_p1p2 < 25:
         if ruins_p1: return pegar_acao_unica(ruins_p1, pedidos_usados)
@@ -232,7 +235,7 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
 def finalizar_dia_e_iniciar_turno():
     pedidos_usados = set() 
     
-    con = conectar()
+    con = banco.conectar_banco()
     cur = con.cursor()
     
     cur.execute("UPDATE Controle_Dias SET dia_atual = dia_atual + 1 WHERE id = 1")
@@ -268,7 +271,7 @@ def finalizar_dia_e_iniciar_turno():
     return novas_mensagens
 
 def registrar_acao_historico(id_planta, acao):
-    con = conectar()
+    con = banco.conectar_banco()
     cur = con.cursor()
     
     cur.execute("SELECT dia_atual FROM Controle_Dias WHERE id = 1")
@@ -284,7 +287,7 @@ def registrar_acao_historico(id_planta, acao):
     con.close()
 
 def regar_planta(id_planta):
-    con = conectar()
+    con = banco.conectar_banco()
     cur = con.cursor()
     cur.execute("UPDATE Plantas SET dias_sem_rega = 0, ja_atendida = 1 WHERE id = ?", (id_planta,))
     con.commit()
@@ -298,7 +301,7 @@ def mover_planta(id_planta, novo_local):
     if novo_local not in lugares_validos:
         raise ValueError("Local inválido para as regras do jardim")
         
-    con = conectar()
+    con = banco.conectar_banco()
     cur = con.cursor()
     cur.execute("UPDATE Plantas SET local_atual = ?, ja_atendida = 1 WHERE id = ?", (novo_local, id_planta))
     con.commit()
@@ -306,3 +309,55 @@ def mover_planta(id_planta, novo_local):
     
     registrar_acao_historico(id_planta, f"Humano moveu a planta para {novo_local}")
     return True
+
+def processar_atendimento(id_planta, mensagem):
+    con = banco.conectar_banco()
+    cur = con.cursor()
+
+    # 1. Marca a planta como atendida
+    cur.execute("UPDATE Plantas SET ja_atendida = 1 WHERE id = ?", (id_planta,))
+
+    acao_realizada = f"Atendeu: {mensagem}"
+    msg_lower = mensagem.lower()
+
+    # 2. Lógica de Água e Sol
+    if any(palavra in msg_lower for palavra in ["água", "sede", "rega"]):
+        cur.execute("UPDATE Plantas SET dias_sem_rega = 0 WHERE id = ?", (id_planta,))
+        acao_realizada += " 💧"
+
+    for local in ["sombra", "meia-sombra", "sol_direto"]:
+        if local in msg_lower:
+            cur.execute("UPDATE Plantas SET local_atual = ? WHERE id = ?", (local, id_planta))
+            acao_realizada += f" ☀️ ({local})"
+
+    # 3. Lógica de Afinidade
+    cur.execute("SELECT id, nome_customizado FROM Plantas WHERE id != ?", (id_planta,))
+    todas_outras = cur.fetchall()
+
+    for outra in todas_outras:
+        id_outra, nome_outra = outra
+        
+        if len(nome_outra) > 1 and nome_outra.lower() in msg_lower:
+            cur.execute("SELECT nivel_afinidade FROM Relacionamentos WHERE planta_origem_id = ? AND planta_destino_id = ?", (id_planta, id_outra))
+            res = cur.fetchone()
+            
+            if res:
+                afinidade = res[0]
+                if any(p in msg_lower for p in ["tira", "roubando", "enoja", "longe", "janela", "espanador", "sofrer", "talarica"]):
+                    nova_afinidade = max(0, afinidade - 15)
+                    acao_realizada += f" | 💔 Treta com {nome_outra}"
+                else:
+                    nova_afinidade = min(50, afinidade + 15)
+                    acao_realizada += f" | 💖 Amizade com {nome_outra}"
+                
+                cur.execute('''
+                    UPDATE Relacionamentos SET nivel_afinidade = ? 
+                    WHERE (planta_origem_id = ? AND planta_destino_id = ?) 
+                       OR (planta_origem_id = ? AND planta_destino_id = ?)
+                ''', (nova_afinidade, id_planta, id_outra, id_outra, id_planta))
+
+    con.commit()
+    con.close()
+
+    registrar_acao_historico(id_planta, acao_realizada)
+    return True, "Pedido processado com inteligência!"

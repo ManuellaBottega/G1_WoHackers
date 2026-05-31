@@ -95,62 +95,12 @@ def atender_pedido(id_planta):
     dados = request.get_json()
     mensagem = dados.get('mensagem', '')
     
-    mensagem_limpa = mensagem.split('(')[0].strip() if '(' in mensagem else mensagem
-
-    con = banco.conectar_banco()
-    cur = con.cursor()
-
-    cur.execute("UPDATE Plantas SET ja_atendida = 1 WHERE id = ?", (id_planta,))
-    acao_realizada = f"Atendeu: {mensagem_limpa}"
-    msg_lower = mensagem.lower()
-
-    if "água" in msg_lower or "sede" in msg_lower or "rega" in msg_lower:
-        cur.execute("UPDATE Plantas SET dias_sem_rega = 0 WHERE id = ?", (id_planta,))
-        acao_realizada += " 💧 (Regada)"
-
-    for local in ["sombra", "meia-sombra", "sol_direto"]:
-        if local in msg_lower:
-            cur.execute("UPDATE Plantas SET local_atual = ? WHERE id = ?", (local, id_planta))
-            acao_realizada += f" ☀️ (Movida para {local})"
-
-    cur.execute("SELECT id, nome_customizado FROM Plantas WHERE id != ?", (id_planta,))
-    outras_plantas = cur.fetchall()
-
-    palavras_ruins = ["janela", "espanador", "enoja", "longe", "prefere a mim", "nunca vai ter"]
-    palavras_boas = ["adoro", "perto", "crochê", "juntas", "beleza"]
-
-    for outra in outras_plantas:
-        id_outra = outra[0]
-        nome_outra = outra[1]
-        
-        if nome_outra.lower() in msg_lower:
-            cur.execute("SELECT nivel_afinidade FROM Relacionamentos WHERE planta_origem_id = ? AND planta_destino_id = ?", (id_planta, id_outra))
-            res = cur.fetchone()
-            
-            if res:
-                afinidade_atual = res[0]
-                nova_afinidade = afinidade_atual
-                
-                if any(p in msg_lower for p in palavras_ruins):
-                    nova_afinidade = max(0, afinidade_atual - 15)
-                    acao_realizada += f" 💔 (Fez mal para {nome_outra})"
-                    
-                elif any(p in msg_lower for p in palavras_boas):
-                    nova_afinidade = min(50, afinidade_atual + 15)
-                    acao_realizada += f" 💖 (Aproximou de {nome_outra})"
-
-                cur.execute('''
-                    UPDATE Relacionamentos SET nivel_afinidade = ? 
-                    WHERE (planta_origem_id = ? AND planta_destino_id = ?) 
-                       OR (planta_origem_id = ? AND planta_destino_id = ?)
-                ''', (nova_afinidade, id_planta, id_outra, id_outra, id_planta))
-
-    con.commit()
-    con.close()
-
-    regras.registrar_acao_historico(id_planta, acao_realizada)
-    return jsonify({"sucesso": True, "mensagem": "Pedido atendido de forma inteligente!"}), 200
-
+    try:
+        sucesso, msg_retorno = regras.processar_atendimento(id_planta, mensagem)
+        return jsonify({"sucesso": sucesso, "mensagem": msg_retorno}), 200
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+    
 @app.route('/api/avancar-dia', methods=['POST'])
 def avancar_dia():
     try:
@@ -158,6 +108,13 @@ def avancar_dia():
         return jsonify({"sucesso": True, "pedidos_do_turno": pedidos}), 200
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+    
+#Você encontrou um pedaço do codigo do diario secreto! Tire o comentarios desses lugares para ler as relacões dos membros do jardim:
+
+#1. Na parte de baixo do HTML, tem um bloco comentado que começa com "<!--" e termina com "-->". Dentro dele, tem o código do modal do diário secreto. Descomente ele para ativar o botão e a janela do diário.
+#2. No final do script, tem uma função chamada "abrirDiarioSecreto" e outra chamada "fecharModalDiario". Elas estão comentadas, descomente elas para ativar a funcionalidade de abrir e fechar o diário secreto.
+#3. No arquivo app.py, tem um endpoint comentado chamado "/api/diario". Descomente ele para ativar a funcionalidade de buscar os dados do diário secreto.
+#4. Após rodar o código, clique no olho que apareceu no canto da tela!
 
 # @app.route('/api/diario', methods=['GET'])
 # def buscar_diario():
@@ -192,8 +149,8 @@ def avancar_dia():
     #     if status != "neutro":
     #         relacionamentos.append({"planta_origem": r[0], "planta_destino": r[1], "status": status, "nivel": r[2]})
             
-    con.close()
-    return jsonify({"historico": historico, "relacionamentos": relacionamentos}), 200
+#    con.close()
+#    return jsonify({"historico": historico, "relacionamentos": relacionamentos}), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
