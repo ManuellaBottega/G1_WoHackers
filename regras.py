@@ -1,17 +1,80 @@
 import sqlite3
 import random
 
+# ==========================================
+# DICIONÁRIOS DE DADOS DO JARDIM DA DISCÓRDIA
+# ==========================================
+
 ESPECIES_DISPONIVEIS = {
     "Jiboia": {"rega_dias": 7, "sol_ideal": "meia-sombra"},
     "Samambaia": {"rega_dias": 3, "sol_ideal": "sombra"},
-    "Cacto": {"rega_dias": 20, "sol_ideal": "sol_direto"}
+    "Cacto": {"rega_dias": 20, "sol_ideal": "sol_direto"},
+    "Espada-de-são-jorge": {"rega_dias": 14, "sol_ideal": "meia-sombra"},
+    "Comigo-ninguém-pode": {"rega_dias": 7, "sol_ideal": "sombra"},
+    "Suculenta": {"rega_dias": 10, "sol_ideal": "sol_direto"},
+    "Trepadeira": {"rega_dias": 4, "sol_ideal": "sol_direto"},
+    "Lírio-da-paz": {"rega_dias": 4, "sol_ideal": "sombra"},
+    "Costela-de-adão": {"rega_dias": 7, "sol_ideal": "meia-sombra"},
+    "Rosa": {"rega_dias": 3, "sol_ideal": "sol_direto"},
+    "Orquídea": {"rega_dias": 8, "sol_ideal": "meia-sombra"},
+    "Bambu da sorte": {"rega_dias": 5, "sol_ideal": "sombra"}
 }
 
 AFINIDADE_INICIAL_ESPECIES = {
-    "Cacto": {"Samambaia": 5, "Jiboia": 40},
-    "Samambaia": {"Cacto": 10, "Jiboia": 25},
-    "Jiboia": {"Cacto": 35, "Samambaia": 20}
+    "Jiboia": {
+        "Costela-de-adão": 48, "Orquídea": 40, "Espada-de-são-jorge": 35, 
+        "Cacto": 10, "Suculenta": 15, "Rosa": 12 
+    },
+    "Samambaia": {
+        "Lírio-da-paz": 48, "Bambu da sorte": 45, "Comigo-ninguém-pode": 38, 
+        "Cacto": 2, "Suculenta": 5, "Rosa": 10
+    },
+    "Cacto": {
+        "Suculenta": 48, "Espada-de-são-jorge": 38, 
+        "Samambaia": 2, "Lírio-da-paz": 5, "Bambu da sorte": 5, "Orquídea": 8 
+    },
+    "Espada-de-são-jorge": {
+        "Cacto": 38, "Suculenta": 40, "Jiboia": 35, 
+        "Lírio-da-paz": 15, "Samambaia": 18 
+    },
+    "Comigo-ninguém-pode": {
+        "Samambaia": 38, "Lírio-da-paz": 42, 
+        "Cacto": 5, "Suculenta": 10, "Trepadeira": 12 
+    },
+    "Suculenta": {
+        "Cacto": 48, "Espada-de-são-jorge": 38, "Trepadeira": 35, 
+        "Samambaia": 5, "Lírio-da-paz": 8, "Bambu da sorte": 10
+    },
+    "Trepadeira": {
+        "Rosa": 45, "Suculenta": 35, 
+        "Samambaia": 10, "Lírio-da-paz": 12, "Orquídea": 15
+    },
+    "Lírio-da-paz": {
+        "Samambaia": 48, "Bambu da sorte": 45, "Comigo-ninguém-pode": 40, 
+        "Cacto": 2, "Suculenta": 5, "Rosa": 8
+    },
+    "Costela-de-adão": {
+        "Jiboia": 45, "Orquídea": 40, 
+        "Cacto": 10, "Rosa": 15, "Trepadeira": 18
+    },
+    "Rosa": {
+        "Trepadeira": 45, 
+        "Cacto": 8, 
+        "Samambaia": 5, "Lírio-da-paz": 8 
+    },
+    "Orquídea": {
+        "Costela-de-adão": 42, "Jiboia": 40, 
+        "Cacto": 5, "Suculenta": 8, "Rosa": 12
+    },
+    "Bambu da sorte": {
+        "Lírio-da-paz": 45, "Samambaia": 42, "Comigo-ninguém-pode": 38,
+        "Cacto": 5, "Suculenta": 8, "Trepadeira": 10
+    }
 }
+
+# ==========================================
+# FUNÇÕES DO BANCO E REGRAS DE NEGÓCIO
+# ==========================================
 
 def conectar():
     return sqlite3.connect('banco_jardim.db')
@@ -22,10 +85,9 @@ def cadastrar_nova_planta(nome_customizado, especie, nome_arquivo_foto='default_
     conexao = conectar()
     cursor = conexao.cursor()
 
-    # Incluindo a foto_perfil no INSERT
     cursor.execute('''
-        INSERT INTO Plantas (nome_customizado, especie, dias_sem_rega, local_atual, foto_perfil)
-        VALUES (?, ?, 0, ?, ?)
+        INSERT INTO Plantas (nome_customizado, especie, dias_sem_rega, local_atual, foto_perfil, ja_atendida)
+        VALUES (?, ?, 0, ?, ?, 0)
     ''', (nome_customizado, especie, local_inicial, nome_arquivo_foto))
     
     nova_planta_id = cursor.lastrowid
@@ -65,41 +127,51 @@ def classificar_acoes(id_planta):
     nome, especie, dias_sem_rega, local_atual = planta
     necessidades = ESPECIES_DISPONIVEIS[especie]
     
+    # Previne quebra caso seja a única planta no jardim
     nome_alvo = outra_planta[0] if outra_planta else "sua vizinha"
     
     acoes_boas = []
     acoes_ruins = []
 
-    # Corrigido: Reclama de sede se os dias sem rega atingiram ou passaram do limite
+    # --- LÓGICA DE SEDE ---
     if dias_sem_rega >= necessidades["rega_dias"]:
-        acoes_ruins.append(f"Tô morrendo de sede, me rega logo! ({nome})")
-        acoes_ruins.append(f"Acho que esqueceram de mim, quero água. ({nome})")
+        acoes_ruins.append(f"Tô morrendo de sede, me rega logo!")
+        acoes_ruins.append(f"Nossa, fica aí regando todo mundo... Menos eu, quero água.")
     else:
-        acoes_boas.append(f"Por favor, me dê um pouco de água. ({nome})")
+        acoes_boas.append(f"Por favor, me dê um pouco de água.")
+
+    # --- LÓGICA DE SOL E KARMA ---
+    lugares_possiveis = list(set([esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]))
+    lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
 
     if local_atual == necessidades["sol_ideal"]:
-        acoes_ruins.append(f"Me tire daqui, quero ir para outro lugar! ({nome})")
-        lugares_possiveis = [esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]
-        lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
-        acoes_ruins.append(f"Me coloque na {random.choice(lugares_ruins)}. ({nome})")
+        # Se está no lugar bom, aproveita pra tentar afundar a outra planta
+        acoes_ruins.append(f"Tire a {nome_alvo} daqui, ela está roubando o meu brilho!")
+        acoes_ruins.append(f"A presença da {nome_alvo} é tão entediante que tá me fazendo murchar, tira ela daqui.")
+        
+        if lugares_ruins:
+            lugar_aleatorio = random.choice(lugares_ruins)
+            acoes_ruins.append(f"Tô sentindo umas vibrações negativas, me coloque em {lugar_aleatorio}.")
+            acoes_ruins.append(f"Manda a {nome_alvo} para {lugar_aleatorio}, acho bom ela pegar outros ares...")
     else:
-        acoes_boas.append(f"Me coloque na {necessidades['sol_ideal']}. ({nome})")
-        lugares_possiveis = [esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]
-        lugares_ruins = [lugo for lugo in lugares_possiveis if lugo != necessidades["sol_ideal"]]
-        acoes_ruins.append(f"Me mude para a {random.choice(lugares_ruins)}. ({nome})")
+        acoes_boas.append(f"Me coloque em {necessidades['sol_ideal']}, eu imploro.")
+        acoes_ruins.append(f"Ficar nesse lugar horrível enquanto a {nome_alvo} tá lá de boa é uma injustiça, traga ela já aqui!")
 
     frases_ruins_absurdas = [
-        f"Coloque a planta {nome} na geladeira.",
-        f"Use as folhas de {nome} para fazer bem-me-quer, mal-me-quer.",
-        f"Verifique o alcance de arremesso da planta {nome_alvo} jogando ela da janela.",
-        f"Acho que {nome} ficaria ótima sendo usada como espanador de pó."
+        f"Coloque a planta {nome_alvo} na geladeira.",
+        f"Jogue a planta {nome_alvo} da janela para ver se ela voa.",
+        f"Acho que a planta {nome_alvo} ficaria ótima como espanador de pó.",
+        f"Ouvi dizer que a planta {nome_alvo} estava se sentindo solitária, que tal deixar ela dar umas voltas de ônibus?",
+        f"A planta{nome_alvo} parece meio murchinha... Eu acho que ela precisa de umas unhas de pé"
+        f"Coloque um pouco de desinfetante na terra da planta {nome_alvo}, ontem ela deu uma festa cabulosa pra baratas"
     ]
     
     frases_boas_absurdas = [
         f"Aprecie a beleza estonteante da planta {nome}.",
-        f"Leve a planta {nome} para dar uma volta de carrinho de mão no quarteirão.",
-        f"Faça roupinhas de crochê sob medida para a planta {nome}.",
-        f"Coloque uma música clássica para {nome} ouvir enquanto fotossintetiza."
+        f"Coloque a gente mais perto, adoro a planta {nome_alvo}!",
+        f"Vamos fazer uma sessão de fotos juntos, eu e a planta {nome_alvo} somos um casal tão fotogênico!",
+        f"Guarde as folhas caídas da planta {nome_alvo} e distribua para seus amigos humanos, para que elas conheçam as palavras de {nome_alvo} também.",
+        f"Faça roupinhas de crochê combinando para mim e para a planta {nome_alvo}."
     ]
 
     acoes_ruins.append(random.choice(frases_ruins_absurdas))
@@ -122,11 +194,13 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     con = conectar()
     cur = con.cursor()
     
-    cur.execute("SELECT nome_customizado FROM Plantas WHERE id = ?", (id_p1,))
+    cur.execute("SELECT nome_customizado, ja_atendida FROM Plantas WHERE id = ?", (id_p1,))
     res_p1 = cur.fetchone()
-    if not res_p1:
+    
+    if not res_p1 or res_p1[1] == 1:
         con.close()
         return None
+        
     nome_p1 = res_p1[0]
     
     cur.execute("SELECT id, nome_customizado FROM Plantas WHERE id != ? ORDER BY RANDOM() LIMIT 1", (id_p1,))
@@ -159,11 +233,12 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     boas_p2, ruins_p2 = classificar_acoes(id_p2)
     con.close()
 
+    # Gera ciúme se houver um triângulo amoroso
     if alvo_ciume:
         rela_p1p2 = 10
         rela_p2p1 = 10
-        ruins_p1.append(f"Fica longe, o amor da minha vida prefere a mim! ({nome_p1})")
-        ruins_p2.append(f"Sua presença me enoja, você nunca vai ter quem você quer. ({nome_p2})")
+        ruins_p1.append(f"Essa {nome_p2} é uma grande de uma talarica!")
+        ruins_p2.append(f"Sua presença me enoja {nome_p1}, você nunca vai ter quem você quer.")
 
     if rela_p1p2 < 20 and rela_p2p1 > 30:
         if ruins_p2: return f"{nome_p2}: {pegar_acao_unica(ruins_p2, pedidos_usados)}"
@@ -183,12 +258,26 @@ def gerar_pedido_turno(id_p1, pedidos_usados):
     return None
 
 def finalizar_dia_e_iniciar_turno():
-    # Cria o controle de pedidos limpo apenas para este turno
     pedidos_usados = set() 
     
     con = conectar()
     cur = con.cursor()
-    cur.execute("UPDATE Plantas SET dias_sem_rega = dias_sem_rega + 1")
+    
+    cur.execute("UPDATE Controle_Dias SET dia_atual = dia_atual + 1 WHERE id = 1")
+    cur.execute("UPDATE Plantas SET dias_sem_rega = dias_sem_rega + 1, ja_atendida = 0")
+    
+    cur.execute("SELECT planta_origem_id, planta_destino_id, nivel_afinidade FROM Relacionamentos")
+    para_atualizar = cur.fetchall()
+    
+    for rel in para_atualizar:
+        p_origem, p_destino, afinidade_atual = rel
+        nova_afinidade = afinidade_atual + random.randint(-4, 4)
+        nova_afinidade = max(0, min(50, nova_afinidade)) 
+        
+        cur.execute('''
+            UPDATE Relacionamentos SET nivel_afinidade = ? 
+            WHERE planta_origem_id = ? AND planta_destino_id = ?
+        ''', (nova_afinidade, p_origem, p_destino))
     
     cur.execute("SELECT id FROM Plantas")
     plantas = cur.fetchall()
@@ -210,7 +299,7 @@ def registrar_acao_historico(id_planta, acao):
     con = conectar()
     cur = con.cursor()
     
-    cur.execute("SELECT COALESCE(MAX(dia_do_jogo), 1) FROM Historico_Acoes")
+    cur.execute("SELECT dia_atual FROM Controle_Dias WHERE id = 1")
     resultado = cur.fetchone()
     dia_atual = resultado[0] if resultado else 1
 
@@ -225,7 +314,7 @@ def registrar_acao_historico(id_planta, acao):
 def regar_planta(id_planta):
     con = conectar()
     cur = con.cursor()
-    cur.execute("UPDATE Plantas SET dias_sem_rega = 0 WHERE id = ?", (id_planta,))
+    cur.execute("UPDATE Plantas SET dias_sem_rega = 0, ja_atendida = 1 WHERE id = ?", (id_planta,))
     con.commit()
     con.close()
     
@@ -239,7 +328,7 @@ def mover_planta(id_planta, novo_local):
         
     con = conectar()
     cur = con.cursor()
-    cur.execute("UPDATE Plantas SET local_atual = ? WHERE id = ?", (novo_local, id_planta))
+    cur.execute("UPDATE Plantas SET local_atual = ?, ja_atendida = 1 WHERE id = ?", (novo_local, id_planta))
     con.commit()
     con.close()
     

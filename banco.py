@@ -15,7 +15,8 @@ def criar_tabelas():
             especie TEXT NOT NULL,
             dias_sem_rega INTEGER DEFAULT 0,
             local_atual TEXT NOT NULL,
-            foto_perfil TEXT DEFAULT 'default_planta.png'
+            foto_perfil TEXT DEFAULT 'default_planta.png',
+            ja_atendida INTEGER DEFAULT 0
         )
     ''')
 
@@ -39,6 +40,15 @@ def criar_tabelas():
             FOREIGN KEY (planta_id) REFERENCES Plantas (id)
         )
     ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Controle_Dias (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            dia_atual INTEGER DEFAULT 1
+        )
+    ''')
+
+    cursor.execute("INSERT OR IGNORE INTO Controle_Dias (id, dia_atual) VALUES (1, 1)")
 
     conexao.commit()
     conexao.close()
