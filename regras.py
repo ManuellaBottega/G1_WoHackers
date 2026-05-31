@@ -109,7 +109,9 @@ def cadastrar_nova_planta(nome_customizado, especie, nome_arquivo_foto='default_
 def gerar_frases_planta(planta, outra_planta):
     nome, especie, dias_sem_rega, local_atual = planta
     necessidades = ESPECIES_DISPONIVEIS[especie]
+    
     nome_alvo = outra_planta[0] if outra_planta else "sua vizinha"
+    local_alvo = outra_planta[1] if outra_planta else None
 
     if nome_alvo == nome and outra_planta:
         nome_alvo = f"a outra {nome_alvo}"
@@ -124,16 +126,39 @@ def gerar_frases_planta(planta, outra_planta):
     lugares_ruins = [l for l in set(e["sol_ideal"] for e in ESPECIES_DISPONIVEIS.values()) if l != necessidades["sol_ideal"]]
 
     if local_atual == necessidades["sol_ideal"]:
-        acoes_ruins.extend([f"Tire a {nome_alvo} daqui, ela está roubando minha luz!", f"A presença da {nome_alvo} tá me fazendo murchar, tira ela daqui."])
+        if local_alvo == local_atual:
+            acoes_ruins.extend([
+                f"Tire a {nome_alvo} daqui, ela está roubando minha luz!", 
+                f"A presença da {nome_alvo} tá me fazendo murchar, tira ela daqui."
+            ])
+        
         if lugares_ruins:
             lugar_aleatorio = random.choice(lugares_ruins)
-            acoes_ruins.extend([f"Tô enjoada daqui, me coloque na {lugar_aleatorio}.", f"Manda a {nome_alvo} para a {lugar_aleatorio}, não suporto olhar pra ela!"])
+            acoes_ruins.append(f"Tô enjoada daqui, me coloque na {lugar_aleatorio}.")
+            if local_alvo == local_atual:
+                acoes_ruins.append(f"Manda a {nome_alvo} para a {lugar_aleatorio}, não suporto olhar pra ela!")
     else:
         acoes_boas.append(f"Me coloque na {necessidades['sol_ideal']}, por favor.")
-        acoes_ruins.append(f"Se eu vou ficar nesse lugar horrível, traga a {nome_alvo} pra sofrer comigo!")
+        if local_alvo != local_atual:
+            acoes_ruins.append(f"Se eu vou ficar nesse lugar horrível, traga a {nome_alvo} pra sofrer comigo!")
 
-    acoes_ruins.append(random.choice(["Me coloque na geladeira, não suporto mais esse clima.", f"Jogue a planta {nome_alvo} da janela para ver se ela voa.", f"Acho que a planta {nome_alvo} ficaria ótima como espanador de pó.", f"Tira a planta {nome_alvo} de perto de mim, a presença dela me enoja."]))
-    acoes_boas.append(random.choice(["Aprecie a minha beleza estonteante.", f"Coloque a gente mais perto, adoro a planta {nome_alvo}!", f"Faça roupinhas de crochê combinando para mim e para a planta {nome_alvo}."]))
+    frases_ruins = [
+        "Me coloque na geladeira, não suporto mais esse clima.", 
+        f"Jogue a planta {nome_alvo} da janela para ver se ela voa.", 
+        f"Acho que a planta {nome_alvo} ficaria ótima como espanador de pó."
+    ]
+    if local_alvo == local_atual:
+        frases_ruins.append(f"Tira a planta {nome_alvo} de perto de mim, a presença dela me enoja.")
+    
+    frases_boas = [
+        "Aprecie a minha beleza estonteante.", 
+        f"Faça roupinhas de crochê combinando para mim e para a planta {nome_alvo}."
+    ]
+    if local_alvo != local_atual:
+        frases_boas.append(f"Coloque a gente mais perto, adoro a planta {nome_alvo}!")
+
+    acoes_ruins.append(random.choice(frases_ruins))
+    acoes_boas.append(random.choice(frases_boas))
 
     return acoes_boas, acoes_ruins
 
@@ -143,7 +168,7 @@ def classificar_acoes(id_planta):
     cur.execute("SELECT nome_customizado, especie, dias_sem_rega, local_atual FROM Plantas WHERE id = ?", (id_planta,))
     planta = cur.fetchone()
     
-    cur.execute("SELECT nome_customizado FROM Plantas WHERE id != ? ORDER BY RANDOM() LIMIT 1", (id_planta,))
+    cur.execute("SELECT nome_customizado, local_atual FROM Plantas WHERE id != ? ORDER BY RANDOM() LIMIT 1", (id_planta,))
     outra_planta = cur.fetchone()
     con.close()
 
@@ -253,10 +278,13 @@ def finalizar_dia_e_iniciar_turno():
             
     return novas_mensagens
 
-def registrar_acao_historico(id_planta, acao):
-    con = banco.conectar_banco()
-    cur = con.cursor()
-    
+def registrar_acao_historico(id_planta, acao, cur=None, con=None):
+    fechar_no_fim = False
+    if cur is None:
+        con = banco.conectar_banco()
+        cur = con.cursor()
+        fechar_no_fim = True
+        
     cur.execute("SELECT dia_atual FROM Controle_Dias WHERE id = 1")
     resultado = cur.fetchone()
     dia_atual = resultado[0] if resultado else 1
@@ -266,32 +294,9 @@ def registrar_acao_historico(id_planta, acao):
         VALUES (?, ?, ?)
     ''', (dia_atual, id_planta, acao))
     
-    con.commit()
-    con.close()
-
-def regar_planta(id_planta):
-    con = banco.conectar_banco()
-    cur = con.cursor()
-    cur.execute("UPDATE Plantas SET dias_sem_rega = 0, ja_atendida = 1 WHERE id = ?", (id_planta,))
-    con.commit()
-    con.close()
-    
-    registrar_acao_historico(id_planta, "Humano regou a planta")
-    return True
-
-def mover_planta(id_planta, novo_local):
-    lugares_validos = [esp["sol_ideal"] for esp in ESPECIES_DISPONIVEIS.values()]
-    if novo_local not in lugares_validos:
-        raise ValueError("Local inválido para as regras do jardim")
-        
-    con = banco.conectar_banco()
-    cur = con.cursor()
-    cur.execute("UPDATE Plantas SET local_atual = ?, ja_atendida = 1 WHERE id = ?", (novo_local, id_planta))
-    con.commit()
-    con.close()
-    
-    registrar_acao_historico(id_planta, f"Humano moveu a planta para {novo_local}")
-    return True
+    if fechar_no_fim:
+        con.commit()
+        con.close()
 
 def interpretar_mensagem(mensagem):
     msg_lower = mensagem.lower()
